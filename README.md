@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This is a branch of https://github.com/AI-MickyJ/Mixture-of-Agents
+This is a fork of https://github.com/AI-MickyJ/Mixture-of-Agents
 
 ### Changes
 
