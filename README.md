@@ -10,7 +10,6 @@ This is a branch of https://github.com/AI-MickyJ/Mixture-of-Agents
 
 1. Routes via OpenRouter for increased model flexibility and choice.
 2. Docker dropped in favour of Anaconda/Conda for less experienced users.
-3. Changes from the original README are marked in yellow.
 
 #### Benefits
 - For novices, Anaconda easier to use than Docker.
