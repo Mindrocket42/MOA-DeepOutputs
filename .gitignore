@@ -1,41 +1,58 @@
-# Usual exclusions
+# ==============================================================================
+# General Exclusions (Windows-Specific)
+# ==============================================================================
+# Logs and temporary files
 *.log
 *.tmp
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
 *.bak
 *.old
+*~      # Backup files (various editors)
 
-# Node.js dependencies
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==============================================================================
+# Node.js (If Applicable)
+# ==============================================================================
 node_modules/
+npm-debug.log*
+yarn-error.log*
 
-# Python specific files
+# ==============================================================================
+# Python (If Applicable)
+# ==============================================================================
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+*.pth
 
-# Build directories
+# ==============================================================================
+# Build & Output Directories (Adjust to Your Project)
+# ==============================================================================
 dist/
 build/
 out/
+tmp/  # Often used for temporary files
+temp/ # Another common temp directory
 
-# System files
+# ==============================================================================
+# IDE/Editor Specific (Personal Preference - Consider Team Consistency)
+# ==============================================================================
+.idea/      # IntelliJ IDEA
+.vscode/    # VS Code
+.project
+.settings/
+
+# ==============================================================================
+# Sensitive Information & Configuration (VERY IMPORTANT)
+# ==============================================================================
+# Environment files
 .env
-.idea/
-.vscode/
 
-# Ignore any file or folder starting with a period
-.*
-# Exclude .gitignore and .git from being ignored
-!.gitignore
-!.git
-
-# Exclude .env template from being ignored
-!.env.example
-
-# Common sensitive files
+# Secrets and configuration (ensure these are NEVER committed)
 secrets.toml
 secrets.yaml
 secrets.json
@@ -52,7 +69,21 @@ id_rsa.pub
 # Docker-specific
 .docker/config.json
 
-# Database credentials
+# Database files
 *.db
 *.sqlite
 *.sqlite3
+
+# ==============================================================================
+# Deprecated/Local Files (Your Custom Workflow - Review Carefully)
+# ==============================================================================
+_*/**  # Ignore contents of deprecated/local folders
+_*     # Ignore contents of deprecated files
+#!.env.example # This has been moved to be above _*
+# Exclude .env template from being ignored is removed
+
+# ==============================================================================
+# Keep These (Crucial for Repository Functionality)
+# ==============================================================================
+!.gitignore
+!.gitattributes  # Ensure this is always tracked
