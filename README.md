@@ -166,7 +166,7 @@ flowchart TD
 
     A[Start: Read prompt.txt] --> B{Layer 1};
 
-    subgraph Layer Processing Repeats N times
+    subgraph 'n' repeats of Layer Process
 
         direction LR
 
@@ -264,7 +264,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
     *   **Using `venv` (Standard Python):**
 
- ```bash
+```bash
 
         # Create environment (use python3 or python depending on your system)
 
@@ -278,11 +278,11 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
         # source venv/bin/activate
 
- ```
+```
 
     *   **Using `conda`:**
 
- ```bash
+```bash
 
         # Create environment
 
@@ -292,7 +292,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
         conda activate moa-deepoutputs
 
- ```
+```
 
   
 
@@ -300,11 +300,11 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
     (Ensure your virtual environment is active)
 
- ```bash
+```bash
 
     pip install -r requirements.txt
 
- ```
+```
 
   
 
@@ -312,7 +312,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
     *   Copy the example file:
 
- ```bash
+```bash
 
         # Windows
 
@@ -322,7 +322,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
         # cp .env.example .env
 
- ```
+```
 
     *   **Edit the `.env` file** with a text editor:
 
@@ -395,11 +395,11 @@ graph TD
 
 2.  **Run the Engine:** (Make sure your virtual environment is activated and you are in the project's root directory)
 
-    ```bash
+```bash
 
     python deepoutputs_engine.py
 
-    ```
+```
 
 3.  **Check Output:** The script will print progress to the console. Once finished, it will show the location of the generated reports and logs within the `reports/` directory.
 
