@@ -264,7 +264,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
     *   **Using `venv` (Standard Python):**
 
-        ```bash
+ ```bash
 
         # Create environment (use python3 or python depending on your system)
 
@@ -278,7 +278,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
         # source venv/bin/activate
 
-        ```
+ ```
 
     *   **Using `conda`:**
 
