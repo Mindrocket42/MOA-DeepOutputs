@@ -47,15 +47,10 @@ Think of it as an automated panel discussion or brainstorming session where diff
   
 
 | Area         | Technologies                                       |
-
 |--------------|----------------------------------------------------|
-
 | **Language** | Python (3.11+)                                     |
-
 | **Core Libs**| `httpx` (async HTTP), `python-dotenv` (config)     |
-
 | **AI/APIs**  | OpenRouter (for access to various LLMs)            |
-
 | **Tooling**  | `pip` (package management), `asyncio` (concurrency)|
 
   
@@ -107,33 +102,19 @@ This project originated as a fork of [AI-MickyJ/Mixture-of-Agents](https://githu
   
 
 ```
-
 .
-
 ├── .env                # Your API keys, model choices, reporting IDs (Create this!)
-
 ├── .env.example        # Example environment file
-
 ├── .gitignore
-
 ├── deepoutputs_engine.py # Main application logic
-
 ├── prompt.txt          # Input prompt for the engine
-
 ├── README.md           # This file
-
 ├── requirements.txt    # Python dependencies
-
 └── reports/            # Output directory for reports and logs (created automatically)
-
     └── <run_name>/
-
         ├── <run_name>_final_report_TIMESTAMP.md
-
         ├── <run_name>_detailed_report_TIMESTAMP.md
-
         └── <run_name>_logs_TIMESTAMP.log
-
 ```
 
   
@@ -183,109 +164,57 @@ The system processes a prompt from `prompt.txt` through a sequence of layers:
 ```mermaid
 flowchart TD
 
-  
+    A[Start: Read prompt.txt] --> B{Layer 1};
 
-    A[Start: Read prompt.txt] --> B{Layer 1};
+    subgraph Layer Processing Repeats N times
 
-  
+        direction LR
 
-    subgraph Layer Processing Repeats N times
+        B --> C[1a. Initial Responses - Agents 1-3];
 
-  
+        C --> D[1b. Aggregation/Critique - Agents 1-3];
 
-        direction LR
+        D --> E[1c. Synthesis - Synth Agent];
 
-  
+        D --> F[1d. Devil's Advocate - DA Agent];
 
-        B --> C[1a. Initial Responses - Agents 1-3];
+    end
 
-  
+    B --> G{Layer 2...N};
 
-        C --> D[1b. Aggregation/Critique - Agents 1-3];
+    E --> G;
 
-  
+    F --> G;
 
-        D --> E[1c. Synthesis - Synth Agent];
+    G --> H[Final Output - Final Agent];
 
-  
+    H --> I[Save Final Report];
 
-        D --> F[1d. Devil's Advocate - DA Agent];
+    H --> J[Save Detailed Report - DeepOutput];
 
-  
+    H --> K[Save Logs];
 
-    end
+    style A fill:#eeeeee,stroke:#333333,color:#111111
 
-  
+    style B fill:#cceeff,stroke:#333333,color:#111111
 
-    B --> G{Layer 2...N};
+    style G fill:#cceeff,stroke:#333333,color:#111111
 
-  
+    style C fill:#fffacd,stroke:#333333,color:#111111
 
-    E --> G;
+    style D fill:#fffacd,stroke:#333333,color:#111111
 
-  
+    style E fill:#ffddcc,stroke:#333333,color:#111111
 
-    F --> G;
+    style F fill:#ffddcc,stroke:#333333,color:#111111
 
-  
+    style H fill:#bbf7d0,stroke:#333333,color:#111111
 
-    G --> H[Final Output - Final Agent];
+    style I fill:#eeeeee,stroke:#333333,color:#111111
 
-  
+    style J fill:#eeeeee,stroke:#333333,color:#111111
 
-    H --> I[Save Final Report];
-
-  
-
-    H --> J[Save Detailed Report - DeepOutput];
-
-  
-
-    H --> K[Save Logs];
-
-  
-
-    style A fill:#eeeeee,stroke:#333333,color:#111111
-
-  
-
-    style B fill:#cceeff,stroke:#333333,color:#111111
-
-  
-
-    style G fill:#cceeff,stroke:#333333,color:#111111
-
-  
-
-    style C fill:#fffacd,stroke:#333333,color:#111111
-
-  
-
-    style D fill:#fffacd,stroke:#333333,color:#111111
-
-  
-
-    style E fill:#ffddcc,stroke:#333333,color:#111111
-
-  
-
-    style F fill:#ffddcc,stroke:#333333,color:#111111
-
-  
-
-    style H fill:#bbf7d0,stroke:#333333,color:#111111
-
-  
-
-    style I fill:#eeeeee,stroke:#333333,color:#111111
-
-  
-
-    style J fill:#eeeeee,stroke:#333333,color:#111111
-
-  
-
-    style K fill:#eeeeee,stroke:#333333,color:#111111
+    style K fill:#eeeeee,stroke:#333333,color:#111111
 ```
 
   
@@ -322,13 +251,12 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
 1.  **Clone the Repository:**
 
-    ```bash
-
+```bash
     git clone https://github.com/Mindrocket42/MOA-DeepOutputs.git
 
     cd MOA-DeepOutputs
 
-    ```
+ ```
 
   
 
@@ -354,7 +282,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
     *   **Using `conda`:**
 
-        ```bash
+ ```bash
 
         # Create environment
 
@@ -364,7 +292,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
         conda activate moa-deepoutputs
 
-        ```
+ ```
 
   
 
@@ -372,11 +300,11 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
     (Ensure your virtual environment is active)
 
-    ```bash
+ ```bash
 
     pip install -r requirements.txt
 
-    ```
+ ```
 
   
 
@@ -384,7 +312,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
     *   Copy the example file:
 
-        ```bash
+ ```bash
 
         # Windows
 
@@ -394,7 +322,7 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
         # cp .env.example .env
 
-        ```
+ ```
 
     *   **Edit the `.env` file** with a text editor:
 
@@ -417,74 +345,40 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 ### Visual Setup Guide 🗺️
 
   
-
 ```mermaid
 graph TD
 
-  
+    A[Clone Repository] --> B{Create & Activate Virtual Env?};
 
-    A[Clone Repository] --> B{Create & Activate Virtual Env?};
+    B -- Yes (Recommended) --> C[Use venv or conda];
 
-  
+    B -- No --> D[Install Globally: Not Recommended!];
 
-    B -- Yes (Recommended) --> C[Use venv or conda];
+    C --> E[pip install -r requirements.txt];
 
-  
+    D --> E;
 
-    B -- No --> D[Install Globally: Not Recommended!];
+    E --> F[Copy .env.example to .env];
 
-  
+    F --> G[Edit .env:\n- Add API Key\n- Choose Models\n- Set Layer Count?];
 
-    C --> E[pip install -r requirements.txt];
+    G --> H[Ready to Run!];
 
-  
+    style A fill:#cceeff,stroke:#333333,color:#111111
 
-    D --> E;
+    style B fill:#fffacd,stroke:#333333,color:#111111
 
-  
+    style C fill:#cceeff,stroke:#333333,color:#111111
 
-    E --> F[Copy .env.example to .env];
+    style D fill:#ffddcc,stroke:#333333,color:#111111
 
-  
+    style E fill:#cceeff,stroke:#333333,color:#111111
 
-    F --> G[Edit .env:\n- Add API Key\n- Choose Models\n- Set Layer Count?];
+    style F fill:#cceeff,stroke:#333333,color:#111111
 
-  
+    style G fill:#fffacd,stroke:#333333,color:#111111
 
-    G --> H[Ready to Run!];
-
-  
-
-    style A fill:#cceeff,stroke:#333333,color:#111111
-
-  
-
-    style B fill:#fffacd,stroke:#333333,color:#111111
-
-  
-
-    style C fill:#cceeff,stroke:#333333,color:#111111
-
-  
-
-    style D fill:#ffddcc,stroke:#333333,color:#111111
-
-  
-
-    style E fill:#cceeff,stroke:#333333,color:#111111
-
-  
-
-    style F fill:#cceeff,stroke:#333333,color:#111111
-
-  
-
-    style G fill:#fffacd,stroke:#333333,color:#111111
-
-  
-
-    style H fill:#bbf7d0,stroke:#333333,color:#111111
-
+    style H fill:#bbf7d0,stroke:#333333,color:#111111
 ```
 
   
@@ -546,8 +440,7 @@ Find valid model identifiers in the [OpenRouter documentation](https://openroute
   
 
 ---
-
-  
+ 
 
 ## Output Explained 📄
 
@@ -555,7 +448,6 @@ Find valid model identifiers in the [OpenRouter documentation](https://openroute
 
 After a successful run, you'll find a new sub-directory inside `reports/`. The sub-directory name is based on the first few words of your prompt (e.g., `reports/what_is_the_capital/`). Inside, you'll find:
 
-  
 
 1.  **`*_final_report_TIMESTAMP.md`:** A concise summary containing the original prompt, agent utilization heuristics, and the final synthesized answer.
 
@@ -563,19 +455,15 @@ After a successful run, you'll find a new sub-directory inside `reports/`. The s
 
 3.  **`*_logs_TIMESTAMP.log`:** A detailed log file capturing runtime events, API calls (without secrets), errors, and timing information. Useful for debugging.
 
-  
 
 The console will also print the location of these files and a preview of the final response.
 
-  
 
 ---
 
-  
 
 ## Status & Roadmap 🚦
 
-  
 
 -   ✅ Core multi-layer processing engine operational.
 
@@ -592,26 +480,20 @@ The console will also print the location of these files and a preview of the fin
 -   🔜 Potential addition of more structured output formats (e.g., JSON).
 
   
-
 ---
 
-  
 
 ## License 📜
 
   
-
 This project is licensed under the MIT License. See the [LICENSE](https://opensource.org/licenses/MIT) file (implied, standard MIT license text applies).
 
   
-
 ---
-
   
 
 ## Contribute & Connect 🙌
 
-  
 
 - Found a bug or have an idea? Please [open an issue](https://github.com/Mindrocket42/MOA-DeepOutputs/issues).
 
@@ -620,9 +502,7 @@ This project is licensed under the MIT License. See the [LICENSE](https://openso
 - Feedback is appreciated, especially regarding the usefulness of the "DeepOutput" format.
 
   
-
 ---
-
   
 
 _Generating deeper insights through collaborative AI discussion._
