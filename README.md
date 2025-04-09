@@ -166,7 +166,7 @@ flowchart TD
 
     A[Start: Read prompt.txt] --> B{Layer 1};
 
-    subgraph Layer Process Repeats N times
+    subgraph 'n' repeats of Layer Process
 
         direction LR
 
