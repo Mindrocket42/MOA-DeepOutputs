@@ -395,11 +395,11 @@ graph TD
 
 2.  **Run the Engine:** (Make sure your virtual environment is activated and you are in the project's root directory)
 
-    ```bash
+```bash
 
     python deepoutputs_engine.py
 
-    ```
+```
 
 3.  **Check Output:** The script will print progress to the console. Once finished, it will show the location of the generated reports and logs within the `reports/` directory.
 
