@@ -1,0 +1,58 @@
+# Usual exclusions
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.bak
+*.old
+
+# Node.js dependencies
+node_modules/
+
+# Python specific files
+__pycache__/
+*.pyc
+*.pyo
+
+# Build directories
+dist/
+build/
+out/
+
+# System files
+.env
+.idea/
+.vscode/
+
+# Ignore any file or folder starting with a period
+.*
+# Exclude .gitignore and .git from being ignored
+!.gitignore
+!.git
+
+# Exclude .env template from being ignored
+!.env.example
+
+# Common sensitive files
+secrets.toml
+secrets.yaml
+secrets.json
+config.json
+config.yaml
+*.key
+*.pem
+id_rsa
+id_rsa.pub
+
+# AWS credentials
+.aws/
+
+# Docker-specific
+.docker/config.json
+
+# Database credentials
+*.db
+*.sqlite
+*.sqlite3
