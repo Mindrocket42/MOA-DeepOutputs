@@ -42,7 +42,7 @@ Think of it as an automated panel discussion or brainstorming session where diff
 
   
 
-## Tech Stack 🧰
+## Tech Stack 
 
   
 
@@ -50,8 +50,8 @@ Think of it as an automated panel discussion or brainstorming session where diff
 |--------------|----------------------------------------------------|
 | **Language** | Python (3.11+)                                     |
 | **Core Libs**| `httpx` (async HTTP), `python-dotenv` (config)     |
-| **AI/APIs**  | OpenRouter (for access to various LLMs)            |
-| **Tooling**  | `pip` (package management), `asyncio` (concurrency)|
+| **AI/APIs**   | OpenRouter (for access to various LLMs)            |
+| **Tooling**   | `pip` (package management), `asyncio` (concurrency)|
 
   
 
@@ -81,7 +81,7 @@ This project originated as a fork of [AI-MickyJ/Mixture-of-Agents](https://githu
 
   
 
-## Key Features ✨
+## Key Features 
 
   
 
@@ -103,18 +103,18 @@ This project originated as a fork of [AI-MickyJ/Mixture-of-Agents](https://githu
 
 ```
 .
-├── .env                # Your API keys, model choices, reporting IDs (Create this!)
-├── .env.example        # Example environment file
+├── .env                # Your API keys, model choices, reporting IDs (Create this!)
+├── .env.example        # Example environment file
 ├── .gitignore
-├── deepoutputs_engine.py # Main application logic
-├── prompt.txt          # Input prompt for the engine
-├── README.md           # This file
-├── requirements.txt    # Python dependencies
-└── reports/            # Output directory for reports and logs (created automatically)
-    └── <run_name>/
-        ├── <run_name>_final_report_TIMESTAMP.md
-        ├── <run_name>_detailed_report_TIMESTAMP.md
-        └── <run_name>_logs_TIMESTAMP.log
+├── deepoutputs_engine.py # The main script to run the process
+├── prompt.txt           # Input prompt file
+├── README.md           # This file
+├── requirements.txt      # Python dependencies
+└── reports/             # Output directory for reports and logs (created automatically)
+    └── <run_name>/ 
+       ├── <run_name>_final_report_TIMESTAMP.md
+       ├── <run_name>_detailed_report_TIMESTAMP.md
+       └── <run_name>_logs_TIMESTAMP.log
 ```
 
   
@@ -135,25 +135,25 @@ The system processes a prompt from `prompt.txt` through a sequence of layers:
 
 2.  **Layer Processing (Repeated `N` times):**
 
-    a.  **Initial Response:** Multiple base agents generate independent responses to the current context (initial prompt or previous layer's synthesis/critique).
+    a.  **Initial Response:** Multiple base agents generate independent responses to the current context (initial prompt or previous layer's synthesis/critique).
 
-    b.  **Aggregation & Peer Review:** The same base agents review *all* initial responses from step (a), critiquing them and providing an improved, independent answer.
+    b.  **Aggregation & Peer Review:** The same base agents review *all* initial responses from step (a), critiquing them and providing an improved, independent answer.
 
-    c.  **Synthesis:** A dedicated Synthesis Agent summarizes the aggregated responses, identifying key insights and agreements/disagreements.
+    c.  **Synthesis:** A dedicated Synthesis Agent summarizes the aggregated responses, identifying key insights and agreements/disagreements.
 
-    d.  **Devil's Advocate:** A dedicated Devil's Advocate Agent critiques the aggregated responses, challenging assumptions and consensus views.
+    d.  **Devil's Advocate:** A dedicated Devil's Advocate Agent critiques the aggregated responses, challenging assumptions and consensus views.
 
-    e.  **Context Carry-over:** The Synthesis and Devil's Advocate outputs become additional context for the *next* layer.
+    e.  **Context Carry-over:** The Synthesis and Devil's Advocate outputs become additional context for the *next* layer.
 
 3.  **Final Output:** A dedicated Final Agent reviews the original prompt and the synthesis/critique from *all* layers to generate the final, concise answer.
 
 4.  **Reporting:** Three key outputs are saved:
 
-    *   `_final_report.md`: Contains the original prompt, agent utilization heuristics, and the concise final response.
+    *   `_final_report.md`: Contains the original prompt, agent utilization heuristics, and the concise final response.
 
-    *   `_detailed_report.md`: Contains everything from the final report *plus* the full "DeepOutput" - all initial responses, aggregations, syntheses, and critiques from every layer, structured for review.
+    *   `_detailed_report.md`: Contains everything from the final report *plus* the full "DeepOutput" - all initial responses, aggregations, syntheses, and critiques from every layer, structured for review.
 
-    *   `_logs.log`: Detailed execution logs for observability and debugging.
+    *   `_logs.log`: Detailed execution logs for observability and debugging.
 
   
 
@@ -223,7 +223,7 @@ flowchart TD
 
   
 
-## Prerequisites 📋
+## Prerequisites 
 
   
 
@@ -241,7 +241,7 @@ flowchart TD
 
   
 
-## Setup Guide ⚡️ (Virtual Environment Recommended)
+## Setup Guide (Virtual Environment Recommended)
 
   
 
@@ -252,9 +252,9 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 1.  **Clone the Repository:**
 
 ```bash
-    git clone https://github.com/Mindrocket42/MOA-DeepOutputs.git
+    git clone https://github.com/Mindrocket42/MOA-DeepOutputs.git
 
-    cd MOA-DeepOutputs
+    cd MOA-DeepOutputs
 
  ```
 
@@ -262,35 +262,35 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
 2.  **Create and Activate Virtual Environment:**
 
-    *   **Using `venv` (Standard Python):**
+    *   **Using `venv` (Standard Python):**
 
 ```bash
 
-        # Create environment (use python3 or python depending on your system)
+       # Create environment (use python3 or python depending on your system)
 
-        python -m venv venv
+       python -m venv venv
 
-        # Activate (Windows PowerShell)
+       # Activate (Windows PowerShell)
 
-        .\venv\Scripts\Activate.ps1
+       .\venv\Scripts\Activate.ps1
 
-        # Activate (Linux/macOS Bash)
+       # Activate (Linux/macOS Bash)
 
-        # source venv/bin/activate
+       # source venv/bin/activate
 
 ```
 
-    *   **Using `conda`:**
+    *   **Using `conda`:**
 
 ```bash
 
-        # Create environment
+       # Create environment
 
-        conda create --name moa-deepoutputs python=3.11
+       conda create --name moa-deepoutputs python=3.11
 
-        # Activate
+       # Activate
 
-        conda activate moa-deepoutputs
+       conda activate moa-deepoutputs
 
 ```
 
@@ -298,11 +298,11 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
 3.  **Install Dependencies:**
 
-    (Ensure your virtual environment is active)
+    (Ensure your virtual environment is active)
 
 ```bash
 
-    pip install -r requirements.txt
+    pip install -r requirements.txt
 
 ```
 
@@ -310,39 +310,37 @@ We recommend using a virtual environment to avoid conflicts with other Python pr
 
 4.  **Configure Environment Variables:**
 
-    *   Copy the example file:
+    *   Copy the example file:
 
 ```bash
 
-        # Windows
+       # Windows
 
-        copy .env.example .env
+       copy .env.example .env
 
-        # Linux/macOS
+       # Linux/macOS
 
-        # cp .env.example .env
+       # cp .env.example .env
 
 ```
 
-    *   **Edit the `.env` file** with a text editor:
+    *   **Edit the `.env` file** with a text editor:
 
-        *   Add your `OPENROUTER_API_KEY`.
+       *   Add your `OPENROUTER_API_KEY`.
 
-        *   Review and optionally change the default `AGENT<N>_MODEL` variables to select different LLMs from OpenRouter for the base agents.
+       *   Customize `AGENT*_MODEL`, `SYNTHESIS_AGENT_MODEL`, `DEVILS_ADVOCATE_AGENT_MODEL`, `FINAL_AGENT_MODEL` with desired OpenRouter model IDs (defaults are provided).
 
-        *   Review and optionally change `SYNTHESIS_AGENT_MODEL`, `DEVILS_ADVOCATE_AGENT_MODEL`, `FINAL_AGENT_MODEL`.
+       *   Adjust `MOA_NUM_LAYERS` if needed (default is 2).
 
-        *   Optionally change `MOA_NUM_LAYERS` (default is 2).
+       *   The `HTTP_REFERER` and `X_TITLE` are used to identify your app in OpenRouter logs; you can keep the defaults or customize them.
 
-        *   The `HTTP_REFERER` and `X_TITLE` are used to identify your app in OpenRouter logs; you can keep the defaults or customize them.
+    *   **Important Security Note:** Ensure the `.env` file is added to your `.gitignore` file and **never commit it to version control**, as it contains your secret API key.
 
-  
 
 ---
-
   
 
-### Visual Setup Guide 🗺️
+### Visual Setup Guide 
 
   
 ```mermaid
@@ -387,7 +385,7 @@ graph TD
 
   
 
-## Running the Project 🚀
+## Running the Project 
 
   
 
@@ -397,7 +395,7 @@ graph TD
 
 ```bash
 
-    python deepoutputs_engine.py
+    python deepoutputs_engine.py
 
 ```
 
@@ -409,81 +407,41 @@ graph TD
 
   
 
-## Configuration Details ⚙️
+## Troubleshooting 
 
   
 
-All configuration is done via the `.env` file:
-
-  
-
--   `OPENROUTER_API_KEY`: **Required.** Your key for OpenRouter.
-
--   `HTTP_REFERER`: Optional. Sets the HTTP Referer header for OpenRouter logs (e.g., `linktr.ee/mindrocket`).
-
--   `X_TITLE`: Optional. Sets the X-Title header for OpenRouter logs (e.g., `MOA-DeepOutputs`).
-
--   `AGENT1_MODEL`, `AGENT2_MODEL`, `AGENT3_MODEL`: Model identifiers from OpenRouter for the base agents used in initial response and aggregation steps.
-
--   `SYNTHESIS_AGENT_MODEL`: Model identifier for the Synthesis Agent.
-
--   `DEVILS_ADVOCATE_AGENT_MODEL`: Model identifier for the Devil's Advocate Agent.
-
--   `FINAL_AGENT_MODEL`: Model identifier for the Final Agent.
-
--   `MOA_NUM_LAYERS`: The number of processing layers (default: 2). More layers mean deeper analysis but longer run times and higher costs.
-
-  
-
-Find valid model identifiers in the [OpenRouter documentation](https://openrouter.ai/docs#models).
-
-  
-
----
- 
-
-## Output Explained 📄
-
-  
-
-After a successful run, you'll find a new sub-directory inside `reports/`. The sub-directory name is based on the first few words of your prompt (e.g., `reports/what_is_the_capital/`). Inside, you'll find:
-
-
-1.  **`*_final_report_TIMESTAMP.md`:** A concise summary containing the original prompt, agent utilization heuristics, and the final synthesized answer.
-
-2.  **`*_detailed_report_TIMESTAMP.md`:** The "DeepOutput." This comprehensive report includes everything in the final report *plus* the full transcript of the multi-agent process: initial responses, aggregations, syntheses, and critiques for *each layer*. Ideal for understanding the reasoning process.
-
-3.  **`*_logs_TIMESTAMP.log`:** A detailed log file capturing runtime events, API calls (without secrets), errors, and timing information. Useful for debugging.
-
-
-The console will also print the location of these files and a preview of the final response.
+- **AuthenticationError / Invalid API Key:** Double-check that your `OPENROUTER_API_KEY` in the `.env` file is correct and active. Ensure the `.env` file is in the project's root directory and is being loaded correctly (no typos in the filename).
+- **Model Not Found:** Verify that the model identifiers specified in your `.env` file are valid OpenRouter models listed [here](https://openrouter.ai/docs#models). Some models might be deprecated or require specific access.
+- **Python Version Error:** Make sure you are running the script with Python 3.11 or newer. Check your version with `python --version` or `python3 --version`.
+- **Dependency Issues:** If you encounter `ModuleNotFoundError`, ensure you have activated your virtual environment (if using one) and have installed the required packages using `pip install -r requirements.txt`.
 
 
 ---
 
 
-## Status & Roadmap 🚦
-
-
--   ✅ Core multi-layer processing engine operational.
-
--   ✅ OpenRouter integration for flexible model selection.
-
--   ✅ Configurable agents, layers, and reporting IDs via `.env`.
-
--   ✅ Generation of final, detailed (DeepOutput), and log files.
-
--   ⏳ Ongoing prompt engineering refinements for agent roles.
-
--   🔜 Exploration of different agent configurations and interaction patterns.
-
--   🔜 Potential addition of more structured output formats (e.g., JSON).
+## Status & Roadmap 
 
   
+-   Core multi-layer processing engine operational.
+
+-   OpenRouter integration for flexible model selection.
+
+-   Configurable agents, layers, and reporting IDs via `.env`.
+
+-   Generation of final, detailed (DeepOutput), and log files.
+
+-   Ongoing prompt engineering refinements for agent roles.
+
+-   Exploration of different agent configurations and interaction patterns.
+
+-   Potential addition of more structured output formats (e.g., JSON).
+
+
 ---
 
 
-## License 📜
+## License 
 
   
 This project is licensed under the MIT License. See the [LICENSE](https://opensource.org/licenses/MIT) file (implied, standard MIT license text applies).
@@ -492,7 +450,7 @@ This project is licensed under the MIT License. See the [LICENSE](https://openso
 ---
   
 
-## Contribute & Connect 🙌
+## Contribute & Connect 
 
 
 - Found a bug or have an idea? Please [open an issue](https://github.com/Mindrocket42/MOA-DeepOutputs/issues).

@@ -1,7 +1,7 @@
 import os
 import asyncio
 import httpx # Use httpx for async requests
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
 from termcolor import colored
 from pathlib import Path
@@ -17,27 +17,100 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Get the root logger to potentially add file handlers later
 logger = logging.getLogger()
 
+# Add detailed debug logging for environment variables
+logger.info("==== Environment Variable Debug ====")
+for key, value in os.environ.items():
+    if "MODEL" in key or "AGENT" in key:
+        logger.info(f"ENV: {key}={value}")
+logger.info("===================================")
+
 # --- Configuration ---
-# Agent Models (Correct as per user instruction)
-AGENT1_MODEL = os.getenv("AGENT1_MODEL", "meta-llama/llama-4-maverick")
-AGENT2_MODEL = os.getenv("AGENT2_MODEL", "qwen/qwq-32b")
-AGENT3_MODEL = os.getenv("AGENT3_MODEL", "google/gemini-2.0-flash-001")
-SYNTHESIS_AGENT_MODEL = os.getenv("SYNTHESIS_AGENT_MODEL", "google/gemini-2.0-flash-001")
-DEVILS_ADVOCATE_AGENT_MODEL = os.getenv("DEVILS_ADVOCATE_AGENT_MODEL", "deepseek/deepseek-r1-distill-qwen-32b")
-FINAL_AGENT_MODEL = os.getenv("FINAL_AGENT_MODEL", "google/gemini-2.5-pro-preview-03-25")
+# Agent Models (symbolic indirection)
+
+def get_agent_model(direct_var: str, symbolic_var: str, default: str = None) -> str:
+    """Gets the agent model string, prioritizing the direct variable, then the symbolic one.
+    
+    Args:
+        direct_var: The name of the direct environment variable (e.g., "AGENT1_MODEL").
+        symbolic_var: The name of the symbolic environment variable (e.g., "AGENT1_MODEL_SYMBOLIC").
+        default: A fallback default model if neither variable is found (optional).
+
+    Returns:
+        The resolved model string.
+        
+    Raises:
+        ValueError: If neither variable is set and no default is provided.
+    """
+    # Extra debug logging for Agent 2
+    if direct_var == "AGENT2_MODEL":
+        logger.info(f"====== AGENT2 DEBUG ======")
+        logger.info(f"  Direct var: {direct_var}, value in env: {os.getenv(direct_var)}")
+        logger.info(f"  Symbolic var: {symbolic_var}, value in env: {os.getenv(symbolic_var)}")
+        # Check Windows case-insensitive behavior
+        for key, value in os.environ.items():
+            if key.upper() == direct_var.upper() and key != direct_var:
+                logger.info(f"  Found potential case mismatch: {key}={value}")
+            if key.upper() == symbolic_var.upper() and key != symbolic_var:
+                logger.info(f"  Found potential case mismatch: {key}={value}")
+        logger.info(f"==========================")
+
+    # Step 1: Check for direct variable
+    direct_value = os.getenv(direct_var)
+    if direct_value:
+        logger.info(f"Found direct value for {direct_var}: {direct_value}")
+        
+        # Check if this is itself a symbolic reference (e.g., "AGENT2_MODEL_SYMBOLIC")
+        # If it looks like an env var name, try to resolve it
+        if direct_value.isupper() and "_" in direct_value and direct_value in os.environ:
+            resolved_value = os.getenv(direct_value)
+            if resolved_value:
+                logger.info(f"Resolved symbolic reference {direct_value} to: {resolved_value}")
+                return resolved_value
+            else:
+                logger.warning(f"Could not resolve symbolic reference {direct_value}")
+        
+        # If not a symbolic reference or couldn't resolve, use the direct value
+        return direct_value
+    
+    # Step 2: Check for symbolic variable
+    symbolic_value = os.getenv(symbolic_var)
+    if symbolic_value:
+        logger.info(f"Using symbolic model setting via {symbolic_var}: {symbolic_value}")
+        return symbolic_value
+        
+    # Step 3: Use default if provided
+    if default:
+        logger.warning(f"Neither {direct_var} nor {symbolic_var} found. Using fallback default: {default}")
+        return default
+        
+    # Step 4: Raise error if no value found
+    raise ValueError(f"Agent model configuration error: Neither {direct_var} nor {symbolic_var} environment variables are set, and no default was provided.")
+
+# Load models directly from environment
+AGENT1_MODEL = os.getenv("AGENT1_MODEL_SYMBOLIC") or os.getenv("AGENT1_MODEL")
+AGENT2_MODEL = os.getenv("AGENT2_MODEL_SYMBOLIC") or os.getenv("AGENT2_MODEL")
+AGENT3_MODEL = os.getenv("AGENT3_MODEL_SYMBOLIC") or os.getenv("AGENT3_MODEL")
+SYNTHESIS_AGENT_MODEL = os.getenv("SYNTHESIS_AGENT_MODEL_SYMBOLIC") or os.getenv("SYNTHESIS_AGENT_MODEL")
+DEVILS_ADVOCATE_AGENT_MODEL = os.getenv("DEVILS_ADVOCATE_AGENT_MODEL_SYMBOLIC") or os.getenv("DEVILS_ADVOCATE_AGENT_MODEL")
+FINAL_AGENT_MODEL = os.getenv("FINAL_AGENT_MODEL_SYMBOLIC") or os.getenv("FINAL_AGENT_MODEL")
 
 # API and Concurrency Settings
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-if not OPENROUTER_API_KEY:
-    raise ValueError("OPENROUTER_API_KEY environment variable not set.")
-
 OPENROUTER_CONCURRENCY = int(os.getenv("OPENROUTER_CONCURRENCY", "5")) # Max concurrent requests
 API_RETRY_ATTEMPTS = int(os.getenv("API_RETRY_ATTEMPTS", "3")) # Max retries on specific errors
 API_INITIAL_BACKOFF = float(os.getenv("API_INITIAL_BACKOFF", "1.0")) # Initial delay in seconds for retry
 API_TIMEOUT = float(os.getenv("API_TIMEOUT", "120.0")) # Timeout for API calls
 
+# Hardcoded values for HTTP referer and title
 HTTP_REFERER = os.getenv("HTTP_REFERER", "MOA_Demo/1.0") # Recommended: Your App Name/Version
 X_TITLE = os.getenv("X_TITLE", "MOA Demo") # Recommended: Your App Name
+
+# Stage-specific max_tokens settings
+INITIAL_MAX_TOKENS = int(os.getenv("INITIAL_MAX_TOKENS", "1500"))
+AGGREGATION_MAX_TOKENS = int(os.getenv("AGGREGATION_MAX_TOKENS", "2500"))
+SYNTHESIS_MAX_TOKENS = int(os.getenv("SYNTHESIS_MAX_TOKENS", "4000"))
+DEVILS_ADVOCATE_MAX_TOKENS = int(os.getenv("DEVILS_ADVOCATE_MAX_TOKENS", "4000"))
+FINAL_MAX_TOKENS = int(os.getenv("FINAL_MAX_TOKENS", "2500"))
 
 # --- Custom Exception ---
 class AgentGenerationError(Exception):
@@ -95,6 +168,17 @@ def sanitize_filename(text: str, max_length: int = 50) -> str:
         return "untitled"
     return sanitized.lower()
 
+def sanitize_for_markdown(text: str) -> str:
+    """
+    Ensures that text does not break markdown formatting, especially code blocks.
+    - Escapes accidental triple backticks by replacing them with a similar sequence.
+    - Ensures consistent line endings.
+    """
+    if not isinstance(text, str):
+        return str(text)
+    # Replace triple backticks with a similar but safe sequence
+    return text.replace('```', '``\u200b`')
+
 # --- Agent Definition ---
 class Agent:
     """Base class for agents."""
@@ -112,7 +196,7 @@ class OpenRouterAgent(Agent):
         super().__init__(name, model, role)
         # Note: Client is no longer created here, it's passed in generate method
 
-    async def generate(self, prompt: str, client: httpx.AsyncClient, semaphore: asyncio.Semaphore, max_tokens: int = 2000) -> str:
+    async def generate(self, prompt: str, client: httpx.AsyncClient, semaphore: asyncio.Semaphore, max_tokens: int = 4000) -> str:
         """
         Generates a response using the OpenRouter API with rate limiting and retries.
 
@@ -120,7 +204,7 @@ class OpenRouterAgent(Agent):
             prompt: The input prompt for the agent.
             client: The shared httpx.AsyncClient instance.
             semaphore: The asyncio.Semaphore to limit concurrency.
-            max_tokens: The maximum number of tokens for the response.
+            max_tokens: The maximum number of tokens for the response. If None, 0, or blank, let API default.
 
         Returns:
             The generated text content.
@@ -128,68 +212,62 @@ class OpenRouterAgent(Agent):
         Raises:
             AgentGenerationError: If generation fails after retries.
         """
-        async with semaphore: # Wait for semaphore before making a call
-            logger.debug(f"Agent {self.name} ({self.model}) acquiring semaphore and starting generation.")
-            result = None
-            last_exception = None
-            backoff_time = API_INITIAL_BACKOFF
+        # Add extra logging for Agent 2
+        if "Agent 2" in self.name:
+            logger.info(f"==== AGENT2 API CALL DEBUG ====")
+            logger.info(f"  Agent name: {self.name}")
+            logger.info(f"  Model being sent to API: {self.model}")
+            logger.info(f"============================")
+            
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": self.role},
+                {"role": "user", "content": prompt}
+            ]
+        }
+        # Only include max_tokens if it's a positive integer
+        if max_tokens is not None:
+            try:
+                mt_int = int(max_tokens)
+            except (TypeError, ValueError):
+                mt_int = None
+            if mt_int and mt_int > 0:
+                payload["max_tokens"] = mt_int
 
-            for attempt in range(API_RETRY_ATTEMPTS):
-                try:
+        backoff_time = API_INITIAL_BACKOFF
+        last_exception = None
+        for attempt in range(API_RETRY_ATTEMPTS):
+            try:
+                async with semaphore:
                     response = await client.post(
-                        "/chat/completions",
-                        json={
-                            "model": self.model,
-                            "messages": [{"role": "user", "content": prompt}],
-                            "max_tokens": max_tokens
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        json=payload,
+                        headers={
+                            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                            "Content-Type": "application/json",
+                            "Referer": HTTP_REFERER,
+                            "X-Title": X_TITLE,
                         },
                         timeout=API_TIMEOUT
                     )
-
-                    response.raise_for_status() # Raise HTTPStatusError for 4xx/5xx
-                    result = response.json()
-
-                    generated_content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    if not generated_content:
-                         # Handle cases where the API returns success but empty content
-                         raise AgentGenerationError(f"Agent {self.name} returned empty content.")
-
-                    logger.debug(f"Agent {self.name} ({self.model}) generated response successfully.")
-                    return generated_content
-
-                except httpx.ReadTimeout as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt + 1}/{API_RETRY_ATTEMPTS} - Timeout error for {self.name}: {e}. Retrying in {backoff_time:.2f} seconds...")
-                except httpx.HTTPStatusError as e:
-                    last_exception = e
-                    if e.response.status_code == 429: # Rate limit
-                        logger.warning(f"Attempt {attempt + 1}/{API_RETRY_ATTEMPTS} - Rate limit error (429) for {self.name}. Retrying in {backoff_time:.2f} seconds...")
-                    elif 500 <= e.response.status_code < 600: # Server error
-                         logger.warning(f"Attempt {attempt + 1}/{API_RETRY_ATTEMPTS} - Server error ({e.response.status_code}) for {self.name}. Retrying in {backoff_time:.2f} seconds...")
-                    else:
-                        # Non-retryable HTTP error
-                        logger.error(f"HTTP Error for {self.name}: {e}")
-                        raise AgentGenerationError(f"Agent {self.name} failed with non-retryable HTTP error: {e}") from e
-                except Exception as e:
-                    # Catch other unexpected errors during the API call or response processing
-                    last_exception = e
-                    logger.error(f"Unexpected error during generation for {self.name}: {e}", exc_info=True)
-                    # Depending on the error, you might classify it as retryable or not
-                    # For simplicity, we'll treat unexpected errors as potentially non-retryable here
-                    # but log them thoroughly. If they *should* be retried, adjust logic.
-                    raise AgentGenerationError(f"Agent {self.name} encountered an unexpected error: {e}") from e
-
-
-                # Wait before retrying
-                if attempt < API_RETRY_ATTEMPTS - 1:
-                    await asyncio.sleep(backoff_time)
-                    backoff_time *= 2 # Exponential backoff
+                response.raise_for_status()
+                data = response.json()
+                if "choices" in data and data["choices"]:
+                    return data["choices"][0]["message"]["content"].strip()
                 else:
-                   logger.error(f"Agent {self.name} ({self.model}) failed after {API_RETRY_ATTEMPTS} attempts.")
-                   raise AgentGenerationError(f"Agent {self.name} ({self.model}) failed after {API_RETRY_ATTEMPTS} attempts.") from last_exception
+                    raise AgentGenerationError(f"No choices returned by API for agent {self.name}.")
+            except Exception as e:
+                last_exception = e
+                logger.warning(f"Attempt {attempt+1} failed for agent {self.name}: {e}")
+                await asyncio.sleep(backoff_time)
+                backoff_time *= 2 # Exponential backoff
+        else:
+            logger.error(f"Agent {self.name} ({self.model}) failed after {API_RETRY_ATTEMPTS} attempts.")
+            raise AgentGenerationError(f"Agent {self.name} ({self.model}) failed after {API_RETRY_ATTEMPTS} attempts.") from last_exception
 
-            # This part should ideally not be reached if logic is correct, but as a safeguard:
-            raise AgentGenerationError(f"Agent {self.name} ({self.model}) failed unexpectedly to generate a response.")
+        # This part should ideally not be reached if logic is correct, but as a safeguard:
+        raise AgentGenerationError(f"Agent {self.name} ({self.model}) failed unexpectedly to generate a response.")
 
 # --- Mixture of Agents Implementation ---
 class MixtureOfAgents:
@@ -203,12 +281,21 @@ class MixtureOfAgents:
         self.devils_advocate_agent = OpenRouterAgent("Devil's Advocate Agent", DEVILS_ADVOCATE_AGENT_MODEL, "Devil's Advocate Role")
         self.final_agent = OpenRouterAgent("Final Agent", FINAL_AGENT_MODEL, "Final Decision Role")
 
+        # Debug: Print what models each agent is using
+        logger.info(f"==== AGENT MODELS AFTER INITIALIZATION ====")
+        for agent in self.agents:
+            logger.info(f"  {agent.name} using model: {agent.model}")
+        logger.info(f"  Synthesis agent using model: {self.synthesis_agent.model}")
+        logger.info(f"  Devil's Advocate agent using model: {self.devils_advocate_agent.model}")
+        logger.info(f"  Final agent using model: {self.final_agent.model}")
+        logger.info(f"==========================================")
+
         # Shared HTTP client and Semaphore for rate limiting
         self.client = httpx.AsyncClient(
             base_url="https://openrouter.ai/api/v1",
             headers={
                 "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "HTTP-Referer": HTTP_REFERER,
+                "Referer": HTTP_REFERER,
                 "X-Title": X_TITLE,
                 "Content-Type": "application/json"
             },
@@ -248,7 +335,7 @@ class MixtureOfAgents:
             logger.debug(f"Layer {layer_num} Prompt:\n{layer_prompt}")
 
             # --- Step 1: Initial Responses ---
-            initial_responses = await self.run_agents_concurrently(self.agents, layer_prompt, "initial response")
+            initial_responses = await self.run_agents_concurrently(self.agents, layer_prompt, "initial response", INITIAL_MAX_TOKENS)
             for agent_idx, response in enumerate(initial_responses):
                  if agent_idx < len(all_agent_responses_for_utilization):
                      all_agent_responses_for_utilization[agent_idx].append(response)
@@ -258,7 +345,8 @@ class MixtureOfAgents:
             aggregation_responses = await self.run_agents_concurrently(
                 self.agents,
                 self.create_aggregation_prompt(prompt, layer_prompt, initial_responses),
-                "aggregation"
+                "aggregation",
+                AGGREGATION_MAX_TOKENS
             )
             for agent_idx, response in enumerate(aggregation_responses):
                  if agent_idx < len(all_agent_responses_for_utilization):
@@ -293,9 +381,9 @@ class MixtureOfAgents:
 
         return layer_details, final_response, utilization
 
-    async def run_agents_concurrently(self, agents: List[OpenRouterAgent], prompt: str, task_description: str) -> List[str]:
+    async def run_agents_concurrently(self, agents: List[OpenRouterAgent], prompt: str, task_description: str, max_tokens: int = 2000) -> List[str]:
         """Runs multiple agents concurrently on the same prompt."""
-        tasks = [agent.generate(prompt, self.client, self.semaphore) for agent in agents]
+        tasks = [agent.generate(prompt, self.client, self.semaphore, max_tokens) for agent in agents]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         processed_results = []
@@ -308,25 +396,31 @@ class MixtureOfAgents:
         return processed_results
 
     def create_layer_prompt(self, original_prompt: str, prev_synthesis: str, prev_devils_advocate: str, layer_index: int) -> str:
-        """Creates the prompt for agents in a specific layer."""
+        """Creates a streamlined, LLM-friendly prompt for agents in a specific layer."""
         if layer_index == 0:
-            return original_prompt
-        else:
-            # Ensure previous context is not empty before adding
-            context_header = f"--- Context from Previous Layer (Layer {layer_index}): ---"
-            synthesis_text = f"Synthesis:\n{prev_synthesis}\n" if prev_synthesis else ""
-            critique_text = f"Devil's Advocate Critique:\n{prev_devils_advocate}\n" if prev_devils_advocate else ""
-            context_block = f"{context_header}\n\n{synthesis_text}\n{critique_text}---\n\n" if synthesis_text or critique_text else ""
+            # Add clear instructions for the first layer
+            return f"""You are an expert AI agent. Your task is to answer the following user prompt as clearly and insightfully as possible, using sound reasoning and, if relevant, calculations or examples.
 
-            return f"""Original User Prompt:
+User Prompt:
 {original_prompt}
 
-{context_block}Your Task for Layer {layer_index + 1}:
-1.  Re-read the **Original User Prompt** carefully.
-2.  Critically evaluate the Synthesis and Devil's Advocate Critique from the previous layer (if provided) IN THE CONTEXT of the Original User Prompt.
-3.  Generate your own **independent** response to the **Original User Prompt**.
-4.  Explicitly state if and how the provided context influenced your response compared to your initial thoughts. Explain your reasoning.
-5.  Ensure your response is well-reasoned, addresses the core question of the Original User Prompt, and is distinct from the previous layer's output.
+Please provide a well-structured, direct answer. If there are ambiguities, state your assumptions."""
+        else:
+            context_header = f"--- Previous Layer Context (Layer {layer_index}) ---"
+            synthesis_text = f"Synthesis (summary so far):\n{prev_synthesis}\n" if prev_synthesis else ""
+            critique_text = f"Devil's Advocate Critique:\n{prev_devils_advocate}\n" if prev_devils_advocate else ""
+            context_block = f"{context_header}\n\n{synthesis_text}{critique_text}---\n\n" if (synthesis_text or critique_text) else ""
+            return f"""You are an expert AI agent. Your task is to answer the user's original prompt, taking into account the analysis and critique from the previous layer.
+
+User Prompt:
+{original_prompt}
+
+{context_block}Instructions for Layer {layer_index + 1}:
+- Carefully read the user prompt.
+- Consider the synthesis and critique above (if present) as context.
+- Generate your own independent answer to the user prompt, not just a rephrasing of prior outputs.
+- Briefly explain if/how the previous context changed your answer, or if you disagree with it.
+- Ensure your answer is clear, well-reasoned, and addresses the main question.
 """
 
     def create_aggregation_prompt(self, original_prompt: str, current_layer_prompt: str, initial_responses: List[str]) -> str:
@@ -367,8 +461,8 @@ Structure your output clearly, addressing each point above. Mark your final impr
         devils_advocate_prompt = self.create_devils_advocate_prompt(original_prompt, current_layer_prompt, aggregation_responses)
 
         tasks = {
-            "synthesis": self.synthesis_agent.generate(synthesis_prompt, self.client, self.semaphore),
-            "devils_advocate": self.devils_advocate_agent.generate(devils_advocate_prompt, self.client, self.semaphore)
+            "synthesis": self.synthesis_agent.generate(synthesis_prompt, self.client, self.semaphore, SYNTHESIS_MAX_TOKENS),
+            "devils_advocate": self.devils_advocate_agent.generate(devils_advocate_prompt, self.client, self.semaphore, DEVILS_ADVOCATE_MAX_TOKENS)
         }
 
         results = await asyncio.gather(*tasks.values(), return_exceptions=True)
@@ -418,15 +512,33 @@ Aggregated/Reviewed Responses Received in this Layer:
 ---
 
 Your Task (Synthesis Agent):
-Analyze the 'Aggregated/Reviewed Responses' provided above. Your goal is to create a concise synthesis that captures the essence of the discussion and prepares for the *next* layer of analysis or the final answer.
+---
+Analyze the full text of the "Aggregated/Reviewed Responses" provided above and deliver one unified, richly detailed synthesis that sets the stage for the next phase of analysis. Your output should include:
 
-1.  **Identify Core Insights:** What are the key conclusions, findings, or proposed solutions presented in the aggregated responses?
-2.  **Highlight Key Agreements & Disagreements:** Summarize the main points where the responses concur and where they diverge significantly.
-3.  **Assess Confidence/Uncertainty:** Note any areas where the responses indicate high uncertainty or conflicting information.
-4.  **Identify Unresolved Issues:** What important aspects of the 'Original User Prompt' still seem unclear or require further investigation in the next layer?
-5.  **Synthesize Succinctly:** Create a brief synthesis (a few paragraphs) that summarizes the current state of the analysis based on the aggregated responses. This synthesis will be part of the context for the next layer. Focus on clarity and accuracy.
+1. **Core Insights:**  
+   - Thoroughly extract and explain the primary conclusions, findings, and proposed solutions.  
+   - Illustrate how these insights interconnect or build on each other.
 
-Do NOT simply list the responses. Provide a coherent summary and assessment. Start your response directly with the synthesis, without introductory phrases like "Here is the synthesis:".
+2. **Consensus & Divergence:**  
+   - Map out where the responses strongly agree—citing specific points or language—and where they diverge or present conflicting perspectives.  
+   - For each major disagreement, briefly describe the reasoning on each side.
+
+3. **Confidence Levels & Uncertainties:**  
+   - Highlight areas where the aggregated responses express high confidence (e.g., recurring evidence, consistent recommendations).  
+   - Pinpoint concepts or data points that remain ambiguous, under‑supported, or contested.
+
+4. **Outstanding Questions & Gaps:**  
+   - Identify any aspects of the Original User Prompt that still lack clarity or need deeper probing.  
+   - Formulate explicit questions or objectives that the next analytical layer should address.
+
+5. **Expansive Synthesis Narrative:**  
+   - In a multi‑paragraph narrative (not limited to two or three), weave together the above elements into a coherent story of what's known, what's debated, and what's missing.  
+   - Use transitions and headings (if helpful) to guide the reader through each section's logical flow.
+
+6. **Next‑Layer Roadmap:**  
+   - Conclude with a detailed outline of the next analytical steps—methodologies, data sources, or stakeholder inputs—that will resolve the open questions and drive toward a final answer.
+
+**Do NOT** simply list bullet points. Craft a prose narrative that captures both the nuance and the breadth of the discourse, fully preparing readers for the deeper dive to come.
 """
 
     def create_devils_advocate_prompt(self, original_prompt: str, current_layer_prompt: str, aggregated_responses: List[str]) -> str:
@@ -491,7 +603,7 @@ Ensure your final output is coherent, directly answers the user's original quest
 
         try:
             # Try the main final agent first
-            final_response = await self.final_agent.generate(final_prompt, self.client, self.semaphore, max_tokens=3000) # Allow more tokens for final
+            final_response = await self.final_agent.generate(final_prompt, self.client, self.semaphore, FINAL_MAX_TOKENS) # Allow more tokens for final
             if final_response and len(final_response.strip()) > 50: # Basic check for meaningful content
                  logger.info(f"Final response generated successfully by {self.final_agent.name}.")
                  return final_response.strip()
@@ -501,13 +613,14 @@ Ensure your final output is coherent, directly answers the user's original quest
 
         except Exception as e:
             logger.error(colored(f"Error generating final response with {self.final_agent.name}: {e}", "red"), exc_info=True)
+            print(f"An unexpected error occurred: {str(e)}")
             logger.warning(colored("Attempting fallback methods...", "yellow"))
 
             # Fallback 1: Try Final Agent with a simpler prompt
             try:
                 logger.info("Fallback 1: Trying Final Agent with simplified prompt.")
                 simplified_prompt = f"""Original User Prompt: {original_prompt}\n\nBased on extensive multi-agent analysis (including critiques), provide your own definitive and comprehensive answer to the Original User Prompt. Be clear, logical, and directly address all aspects of the original request."""
-                fallback_response = await self.final_agent.generate(simplified_prompt, self.client, self.semaphore, max_tokens=2500)
+                fallback_response = await self.final_agent.generate(simplified_prompt, self.client, self.semaphore, FINAL_MAX_TOKENS)
                 if fallback_response and len(fallback_response.strip()) > 50:
                     logger.info(f"Fallback 1 succeeded using {self.final_agent.name} with simplified prompt.")
                     return fallback_response.strip()
@@ -519,7 +632,7 @@ Ensure your final output is coherent, directly answers the user's original quest
                 # Fallback 2: Try Synthesis Agent with the simplified prompt
                 try:
                     logger.info(colored(f"Fallback 2: Trying Synthesis Agent ({self.synthesis_agent.name}) with simplified prompt.", "yellow"))
-                    synthesis_fallback = await self.synthesis_agent.generate(simplified_prompt, self.client, self.semaphore, max_tokens=2500)
+                    synthesis_fallback = await self.synthesis_agent.generate(simplified_prompt, self.client, self.semaphore, FINAL_MAX_TOKENS)
                     if synthesis_fallback and len(synthesis_fallback.strip()) > 50:
                         logger.info(f"Fallback 2 succeeded using {self.synthesis_agent.name}.")
                         return synthesis_fallback.strip()
@@ -527,7 +640,6 @@ Ensure your final output is coherent, directly answers the user's original quest
                         raise AgentGenerationError("Fallback 2 response was empty or too short.")
                 except Exception as fallback_e2:
                     logger.error(colored(f"Fallback 2 also failed: {fallback_e2}", "red"))
-                    
                     # Last Resort: Return error message with context summary
                     logger.critical("All final response generation methods failed.")
                     error_message = f"""Apologies, but the final response could not be generated due to persistent errors.
@@ -586,13 +698,13 @@ Please try refining your prompt or Rerun the process. The specific errors have b
 
 
 # --- Report Generation ---
-
 def generate_markdown_report(
     prompt: str,
     layer_details: List[Dict[str, Any]],
     final_response: str,
     utilization: Dict[str, float],
-    final_agent_name: str
+    final_agent_name: str,
+    moa: MixtureOfAgents
 ) -> str:
     """Generates the final summary Markdown report."""
     markdown_content = f"""# MoA Response Report
@@ -608,9 +720,7 @@ def generate_markdown_report(
 ## Final MoA Response
 **Final Response Agent:** {final_agent_name}
 
-```markdown
-{final_response}
-```
+{sanitize_for_markdown(final_response)}
 """
     return markdown_content
 
@@ -621,9 +731,15 @@ def generate_detailed_markdown_report(
     utilization: Dict[str, float],
     final_agent_name: str,
     synthesis_agent_name: str,
-    devils_advocate_agent_name: str
+    devils_advocate_agent_name: str,
+    moa: MixtureOfAgents
 ) -> str:
     """Generates a detailed comprehensive Markdown report with all intermediate outputs."""
+    # Fetch model names for special agents
+    synthesis_model = getattr(moa.synthesis_agent, 'model', 'unknown')
+    devils_advocate_model = getattr(moa.devils_advocate_agent, 'model', 'unknown')
+    final_agent_model = getattr(moa.final_agent, 'model', 'unknown')
+
     markdown_content = f"""# MoA Detailed Response Report
 
 ## Original Prompt
@@ -634,15 +750,6 @@ def generate_detailed_markdown_report(
 
 *(Note: Utilization is a heuristic based on text similarity to the final output)*
 
-## Final MoA Response
-**Final Response Agent:** {final_agent_name}
-
-```markdown
-{final_response}
-```
-
----
-
 ## Intermediate Outputs
 """
 
@@ -650,9 +757,6 @@ def generate_detailed_markdown_report(
         layer_num = layer["layer_number"]
         markdown_content += f"""
 ### Layer {layer_num}
-
-<details>
-<summary>Layer {layer_num} Details (Click to expand)</summary>
 
 #### Layer Prompt
 > {layer["layer_prompt_details"]}
@@ -664,12 +768,8 @@ def generate_detailed_markdown_report(
             for item in layer["initial_responses"]:
                 if isinstance(item, (list, tuple)) and len(item) == 2:
                     agent_name, response = item
-                    markdown_content += f"""
-##### {agent_name}
-```text
-{response}
-```
-"""
+                    agent_model = next((agent.model for agent in moa.agents if agent.name == agent_name), "unknown")
+                    markdown_content += f"""\n##### {agent_name} - `{agent_model}`\n\n{sanitize_for_markdown(response)}\n"""
                 else:
                      markdown_content += f"\n_Invalid format for initial response item: {item}_"
         else:
@@ -684,32 +784,23 @@ def generate_detailed_markdown_report(
              for item in layer["aggregation_responses"]:
                  if isinstance(item, (list, tuple)) and len(item) == 2:
                     agent_name, response = item
-                    markdown_content += f"""
-##### {agent_name}
-```text
-{response}
-```
-"""
+                    agent_model = next((agent.model for agent in moa.agents if agent.name == agent_name), "unknown")
+                    markdown_content += f"""\n##### {agent_name} - `{agent_model}`\n\n{sanitize_for_markdown(response)}\n"""
                  else:
                       markdown_content += f"\n_Invalid format for aggregation response item: {item}_"
         else:
-              markdown_content += "\n_No aggregation responses recorded or invalid format._"
+               markdown_content += "\n_No aggregation responses recorded or invalid format._"
 
 
-        markdown_content += f"""
-#### Step 3 - Synthesized Aggregated Responses (Synthesis Agent: {synthesis_agent_name})
+        markdown_content += f"""\n#### Step 3 - Synthesized Aggregated Responses (Synthesis Agent: {synthesis_agent_name} - `{synthesis_model}`)
 
 ##### Synthesis
-```text
-{layer.get("synthesis", "N/A")}
-```
 
-##### Devil's Advocate (Agent: {devils_advocate_agent_name})
-```text
-{layer.get("devils_advocate", "N/A")}
-```
+{sanitize_for_markdown(layer.get("synthesis", "N/A"))}
 
-</details>
+##### Devil's Advocate (Agent: {devils_advocate_agent_name} - `{devils_advocate_model}`)
+
+{sanitize_for_markdown(layer.get("devils_advocate", "N/A"))}
 
 ---
 """
@@ -717,29 +808,135 @@ def generate_detailed_markdown_report(
     markdown_content += f"""
 ## Information Passed to Final Response Agent
 
-The following synthesized information from all layers, along with the original user prompt, was passed to the final response agent ({final_agent_name}). The final agent used this information to generate the final MoA response.
-
+The following synthesized information from all layers, along with the original user prompt, was passed to the final response agent ({final_agent_name} - `{final_agent_model}`). The final agent used this information to generate the final MoA response.
 """
     for layer in layer_details:
         layer_num = layer["layer_number"]
         markdown_content += f"""
 ### Layer {layer_num} Synthesis
 
-```text
-{layer.get("synthesis", "N/A")}
-```
+{sanitize_for_markdown(layer.get("synthesis", "N/A"))}
 
 ### Layer {layer_num} Devil's Advocate
 
-```text
-{layer.get("devils_advocate", "N/A")}
-```
+{sanitize_for_markdown(layer.get("devils_advocate", "N/A"))}
 
 ---
 """
 
+    # Add Final MoA Response at the end
+    markdown_content += f"""
+## Final MoA Response
+**Final Response Agent:** {final_agent_name} - `{final_agent_model}`
+
+{sanitize_for_markdown(final_response)}
+"""
+
     return markdown_content.strip()
 
+def generate_detailed_markdown_report_gfm(
+    prompt: str,
+    layer_details: List[Dict[str, Any]],
+    final_response: str,
+    utilization: Dict[str, float],
+    final_agent_name: str,
+    synthesis_agent_name: str,
+    devils_advocate_agent_name: str,
+    moa: 'MixtureOfAgents'
+) -> str:
+    """Generates a detailed Markdown report with GitHub-flavored markdown formatting."""
+    # Fetch model names for special agents
+    synthesis_model = getattr(moa.synthesis_agent, 'model', 'unknown')
+    devils_advocate_model = getattr(moa.devils_advocate_agent, 'model', 'unknown')
+    final_agent_model = getattr(moa.final_agent, 'model', 'unknown')
+
+    markdown_content = f"""# MoA Detailed Response Report (GitHub-Flavored)
+
+## Original Prompt
+> {prompt}
+
+## Agent Utilization
+{chr(10).join([f"- {agent_name}: {percentage:.2f}%" for agent_name, percentage in utilization.items()])}
+
+*(Note: Utilization is a heuristic based on text similarity to the final output)*
+
+## Intermediate Outputs
+"""
+    for layer in layer_details:
+        layer_num = layer["layer_number"]
+        markdown_content += f"""
+### Layer {layer_num}
+
+#### Layer Prompt
+> {layer["layer_prompt_details"]}
+
+#### Step 1 - Agents Initial Responses
+"""
+        if layer.get("initial_responses") and isinstance(layer["initial_responses"], list):
+            for item in layer["initial_responses"]:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    agent_name, response = item
+                    agent_model = next((agent.model for agent in moa.agents if agent.name == agent_name), "unknown")
+                    markdown_content += f"""\n##### {agent_name} - `{agent_model}`\n\n{sanitize_for_markdown(response)}\n"""
+                else:
+                    markdown_content += f"\n_Invalid format for initial response item: {item}_"
+        else:
+            markdown_content += "\n_No initial responses recorded or invalid format._"
+        
+        markdown_content += "\n#### Step 2 - Agent Aggregation of All Responses\n"
+        
+        if layer.get("aggregation_responses") and isinstance(layer["aggregation_responses"], list):
+            for item in layer["aggregation_responses"]:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    agent_name, response = item
+                    agent_model = next((agent.model for agent in moa.agents if agent.name == agent_name), "unknown")
+                    markdown_content += f"""\n##### {agent_name} - `{agent_model}`\n\n{sanitize_for_markdown(response)}\n"""
+                else:
+                    markdown_content += f"\n_Invalid format for aggregation response item: {item}_"
+        else:
+            markdown_content += "\n_No aggregation responses recorded or invalid format._"
+        
+        markdown_content += f"""\n#### Step 3 - Synthesized Aggregated Responses (Synthesis Agent: {synthesis_agent_name} - `{synthesis_model}`)
+
+##### Synthesis
+
+{sanitize_for_markdown(layer.get('synthesis', 'N/A'))}
+
+##### Devil's Advocate (Agent: {devils_advocate_agent_name} - `{devils_advocate_model}`)
+
+{sanitize_for_markdown(layer.get('devils_advocate', 'N/A'))}
+
+---
+"""
+
+    markdown_content += f"""\n## Information Passed to Final Response Agent
+
+The following synthesized information from all layers, along with the original user prompt, was passed to the final response agent ({final_agent_name} - `{final_agent_model}`). The final agent used this information to generate the final MoA response.
+"""
+    for layer in layer_details:
+        layer_num = layer["layer_number"]
+        markdown_content += f"""\n### Layer {layer_num} Synthesis
+
+{sanitize_for_markdown(layer.get('synthesis', 'N/A'))}
+
+### Layer {layer_num} Devil's Advocate
+
+{sanitize_for_markdown(layer.get('devils_advocate', 'N/A'))}
+
+---
+"""
+
+    # Add Final MoA Response at the end
+    markdown_content += f"""
+## Final MoA Response
+**Final Response Agent:** {final_agent_name} - `{final_agent_model}`
+
+{sanitize_for_markdown(final_response)}
+"""
+
+    return markdown_content.strip()
+
+# In main(), after generating the detailed report, also generate the GFM version and save both
 async def main():
     """Main function to run the Mixture of Agents model with prompt from file."""
     file_handler = None
@@ -748,6 +945,10 @@ async def main():
         # --- Setup ---
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         
+        # FORCE CORRECT MODEL FOR AGENT 2
+        logger.info("Forcing correct model for Agent 2 to deepseek/deepseek-chat-v3-0324")
+        os.environ["AGENT2_MODEL"] = "deepseek/deepseek-chat-v3-0324"
+        
         # Read prompt from file
         prompt = read_prompt_from_file()
         
@@ -755,18 +956,18 @@ async def main():
         base_filename = sanitize_filename(prompt)
         logger.info(f"Using base name for run: {base_filename}")
         
-        # Create run-specific reports directory
+        # Create run-specific reports directory (now with timestamped subfolder)
         reports_base_dir = Path("reports")
-        run_reports_dir = reports_base_dir / base_filename
+        run_reports_dir = reports_base_dir / f"{base_filename}_{timestamp}"
         run_reports_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # --- Configure File Logging ---
         log_file_path = run_reports_dir / f"{base_filename}_logs_{timestamp}.log"
-        file_handler = logging.FileHandler(log_file_path, encoding='utf-8')
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler) # Add handler to the root logger
-        logger.info(f"Logging configured to file: {log_file_path}")
+        file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(file_handler)
+        logger.info(f"Logging to {log_file_path}")
         
         # Log initial info again, now that file handler is set
         logger.info(f"Starting MoA run with base name: {base_filename}")
@@ -787,8 +988,17 @@ async def main():
             num_layers = default_num_layers
         
         # --- Initialize MoA ---
+        models_list = [AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL]
+        logger.info(f"Models to be used: {models_list}")
+        
+        # HARDCODE fix for Agent 2 if needed
+        if models_list[1] == "thudm/glm-z1-rumination-32b":
+            logger.warning("Detected incorrect model for Agent 2, forcing correct model")
+            models_list[1] = "deepseek/deepseek-chat-v3-0324"
+            logger.info(f"Updated models list: {models_list}")
+            
         moa = MixtureOfAgents(
-            models=[AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL],
+            models=models_list,
             num_layers=num_layers # Use configured number of layers
         )
         
@@ -804,9 +1014,9 @@ async def main():
             layer_details=layer_details,
             final_response=final_response,
             utilization=utilization,
-            final_agent_name=moa.final_agent.name
+            final_agent_name=moa.final_agent.name,
+            moa=moa
         )
-        
         detailed_report = generate_detailed_markdown_report(
             prompt=prompt,
             layer_details=layer_details,
@@ -814,20 +1024,32 @@ async def main():
             utilization=utilization,
             final_agent_name=moa.final_agent.name,
             synthesis_agent_name=moa.synthesis_agent.name,
-            devils_advocate_agent_name=moa.devils_advocate_agent.name
+            devils_advocate_agent_name=moa.devils_advocate_agent.name,
+            moa=moa
+        )
+        detailed_report_gfm = generate_detailed_markdown_report_gfm(
+            prompt=prompt,
+            layer_details=layer_details,
+            final_response=final_response,
+            utilization=utilization,
+            final_agent_name=moa.final_agent.name,
+            synthesis_agent_name=moa.synthesis_agent.name,
+            devils_advocate_agent_name=moa.devils_advocate_agent.name,
+            moa=moa
         )
         logger.info("Reports generated.")
 
         # --- Save Reports ---
         final_report_path = run_reports_dir / f"{base_filename}_final_report_{timestamp}.md"
         detailed_report_path = run_reports_dir / f"{base_filename}_detailed_report_{timestamp}.md"
+        detailed_report_gfm_path = run_reports_dir / f"{base_filename}_detailed_report_gfm_{timestamp}.md"
         
         try:
             with open(final_report_path, "w", encoding="utf-8") as f:
                 f.write(final_report)
             logger.info(f"Final report saved to {final_report_path}")
         except Exception as e:
-             logger.error(f"Error saving final report to {final_report_path}: {e}", exc_info=True)
+            logger.error(f"Error saving final report to {final_report_path}: {e}", exc_info=True)
 
         try:
             with open(detailed_report_path, "w", encoding="utf-8") as f:
@@ -836,17 +1058,31 @@ async def main():
         except Exception as e:
             logger.error(f"Error saving detailed report to {detailed_report_path}: {e}", exc_info=True)
 
+        try:
+            with open(detailed_report_gfm_path, "w", encoding="utf-8") as f:
+                f.write(detailed_report_gfm)
+            logger.info(f"GFM detailed report saved to {detailed_report_gfm_path}")
+        except Exception as e:
+            logger.error(f"Error saving GFM detailed report to {detailed_report_gfm_path}: {e}", exc_info=True)
+
         # --- Output to Console ---
+        try:
+            # Use utf-8 encoding for printing to handle all Unicode characters
+            import sys
+            sys.stdout.reconfigure(encoding='utf-8')
+        except Exception:
+            pass  # If reconfigure fails (older Python), fallback to default behavior
         print(f"\n--- MoA Run Complete ---")
         print(f"Run Folder: {run_reports_dir}")
         print(f"Logs: {log_file_path}")
         print(f"Final Report: {final_report_path}")
         print(f"Detailed Report: {detailed_report_path}")
+        print(f"GFM Detailed Report: {detailed_report_gfm_path}")
         print(f"\nFinal Response Preview:\n{final_response[:500]}...\n") # Show preview
 
     except FileNotFoundError as e:
-         # Specific handling for prompt file not found, already logged
-         print(f"Error: {str(e)}")
+        # Specific handling for prompt file not found, already logged
+        print(f"Error: {str(e)}")
     except Exception as e:
         logger.error(f"Critical error in main function: {str(e)}", exc_info=True)
         print(f"An unexpected error occurred: {str(e)}")
