@@ -31,64 +31,7 @@ logger.info("===================================")
 # --- Configuration ---
 # Agent Models (symbolic indirection)
 
-def get_agent_model(direct_var: str, symbolic_var: str, default: str = None) -> str:
-    """Gets the agent model string, prioritizing the direct variable, then the symbolic one.
-    
-    Args:
-        direct_var: The name of the direct environment variable (e.g., "AGENT1_MODEL").
-        symbolic_var: The name of the symbolic environment variable (e.g., "AGENT1_MODEL_SYMBOLIC").
-        default: A fallback default model if neither variable is found (optional).
-
-    Returns:
-        The resolved model string.
-        
-    Raises:
-        ValueError: If neither variable is set and no default is provided.
-    """
-    # Extra debug logging for Agent 2
-    if direct_var == "AGENT2_MODEL":
-        logger.info(f"====== AGENT2 DEBUG ======")
-        logger.info(f"  Direct var: {direct_var}, value in env: {os.getenv(direct_var)}")
-        logger.info(f"  Symbolic var: {symbolic_var}, value in env: {os.getenv(symbolic_var)}")
-        # Check Windows case-insensitive behavior
-        for key, value in os.environ.items():
-            if key.upper() == direct_var.upper() and key != direct_var:
-                logger.info(f"  Found potential case mismatch: {key}={value}")
-            if key.upper() == symbolic_var.upper() and key != symbolic_var:
-                logger.info(f"  Found potential case mismatch: {key}={value}")
-        logger.info(f"==========================")
-
-    # Step 1: Check for direct variable
-    direct_value = os.getenv(direct_var)
-    if direct_value:
-        logger.info(f"Found direct value for {direct_var}: {direct_value}")
-        
-        # Check if this is itself a symbolic reference (e.g., "AGENT2_MODEL_SYMBOLIC")
-        # If it looks like an env var name, try to resolve it
-        if direct_value.isupper() and "_" in direct_value and direct_value in os.environ:
-            resolved_value = os.getenv(direct_value)
-            if resolved_value:
-                logger.info(f"Resolved symbolic reference {direct_value} to: {resolved_value}")
-                return resolved_value
-            else:
-                logger.warning(f"Could not resolve symbolic reference {direct_value}")
-        
-        # If not a symbolic reference or couldn't resolve, use the direct value
-        return direct_value
-    
-    # Step 2: Check for symbolic variable
-    symbolic_value = os.getenv(symbolic_var)
-    if symbolic_value:
-        logger.info(f"Using symbolic model setting via {symbolic_var}: {symbolic_value}")
-        return symbolic_value
-        
-    # Step 3: Use default if provided
-    if default:
-        logger.warning(f"Neither {direct_var} nor {symbolic_var} found. Using fallback default: {default}")
-        return default
-        
-    # Step 4: Raise error if no value found
-    raise ValueError(f"Agent model configuration error: Neither {direct_var} nor {symbolic_var} environment variables are set, and no default was provided.")
+# (Removed unused get_agent_model function for code cleanliness)
 
 # Load models directly from environment
 AGENT1_MODEL = os.getenv("AGENT1_MODEL_SYMBOLIC") or os.getenv("AGENT1_MODEL")
@@ -251,7 +194,7 @@ class OpenRouterAgent(Agent):
                         headers={
                             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                             "Content-Type": "application/json",
-                            "Referer": "linktr.ee/mindrocket",
+                            "HTTP-Referer": "linktr.ee/mindrocket",
                             "X-Title": "MOA-DeepOutputs",
                         },
                         timeout=API_TIMEOUT
@@ -310,7 +253,7 @@ class MixtureOfAgents:
             base_url="https://openrouter.ai/api/v1",
             headers={
                 "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Referer": HTTP_REFERER,
+                "HTTP-Referer": HTTP_REFERER,
                 "X-Title": X_TITLE,
                 "Content-Type": "application/json"
             },
@@ -337,6 +280,7 @@ class MixtureOfAgents:
         """
         layer_details = []
         all_agent_responses_for_utilization = [[] for _ in self.agents] # Store responses per agent across layers
+        deep_research_responses_for_utilization = []  # Track Deep Research Agent responses if enabled
 
         # current_context = "" # Removed as context is built per layer
         last_synthesis = ""
@@ -363,6 +307,8 @@ class MixtureOfAgents:
                     # Record base agents' responses for utilization
                     for agent_idx, response in enumerate(initial_responses):
                         all_agent_responses_for_utilization[agent_idx].append(response)
+                    # Track Deep Research Agent's response for utilization
+                    deep_research_responses_for_utilization.append(deep_research_response)
                     logger.info(colored(f"* Layer {layer_num} initial responses received ({len(initial_all)} agents, including Deep Research)", "green"))
                 else:
                     initial_responses = await self.run_agents_concurrently(self.agents, layer_prompt, "initial response", INITIAL_MAX_TOKENS)
@@ -422,7 +368,11 @@ class MixtureOfAgents:
         logger.info(colored("* Final Output Generated", "yellow"))
 
         # --- Utilization Calculation ---
-        utilization = self.calculate_utilization(all_agent_responses_for_utilization, final_response)
+        utilization = self.calculate_utilization(
+            all_agent_responses_for_utilization,
+            final_response,
+            deep_research_responses_for_utilization if self.include_deep_research and self.deep_research_agent else None
+        )
 
         return layer_details, final_response, utilization
 
@@ -698,19 +648,22 @@ Please try refining your prompt or Rerun the process. The specific errors have b
                     return error_message
 
 
-    def calculate_utilization(self, all_agent_responses_for_utilization: List[List[str]], final_response: str) -> Dict[str, float]:
+    def calculate_utilization(self, all_agent_responses_for_utilization: List[List[str]], final_response: str, deep_research_responses_for_utilization: list = None) -> Dict[str, float]:
         """
-        Calculates the 'utilization' of each base agent based on the similarity
+        Calculates the 'utilization' of each base agent (and Deep Research Agent if present) based on the similarity
         of their combined contributions (initial + aggregation per layer) to the final response.
         Note: This is a heuristic measure.
         """
         utilization = {agent.name: 0.0 for agent in self.agents}
+        if deep_research_responses_for_utilization is not None:
+            utilization["Deep Research Agent"] = 0.0
         total_similarity = 0.0
 
         if not final_response or final_response.startswith("Apologies,"): # Don't calculate if final response failed
              logger.warning("Skipping utilization calculation due to failed final response.")
              return utilization
 
+        # Base agents
         for agent_index, agent in enumerate(self.agents):
             # Combine all responses (initial and aggregation) from this agent across all layers
             agent_combined_text = " ".join(all_agent_responses_for_utilization[agent_index])
@@ -722,21 +675,30 @@ Please try refining your prompt or Rerun the process. The specific errors have b
                  # isjunk=None means treat all characters as important
                  similarity = SequenceMatcher(None, agent_combined_text, final_response, autojunk=False).ratio()
 
-
             utilization[agent.name] = similarity
             total_similarity += similarity
             logger.debug(f"Agent {agent.name} combined text length: {len(agent_combined_text)}, Similarity to final: {similarity:.4f}")
 
+        # Deep Research Agent
+        if deep_research_responses_for_utilization is not None:
+            dr_combined_text = " ".join(deep_research_responses_for_utilization)
+            if not dr_combined_text.strip():
+                dr_similarity = 0.0
+            else:
+                dr_similarity = SequenceMatcher(None, dr_combined_text, final_response, autojunk=False).ratio()
+            utilization["Deep Research Agent"] = dr_similarity
+            total_similarity += dr_similarity
+            logger.debug(f"Deep Research Agent combined text length: {len(dr_combined_text)}, Similarity to final: {dr_similarity:.4f}")
 
         if total_similarity == 0:
             # Avoid division by zero and assign equal weight if no similarity found (or only 1 agent)
-             num_agents = len(self.agents)
-             if num_agents > 0:
+            num_agents = len(self.agents) + (1 if deep_research_responses_for_utilization is not None else 0)
+            if num_agents > 0:
                 logger.warning("Total similarity is zero. Assigning equal utilization.")
                 equal_share = 100.0 / num_agents
-                return {agent.name: equal_share for agent in self.agents}
-             else:
-                 return {} # No agents
+                return {name: equal_share for name in utilization}
+            else:
+                return {} # No agents
         else:
             # Normalize scores to percentages
             return {agent_name: (sim / total_similarity) * 100.0 for agent_name, sim in utilization.items()}
@@ -791,9 +753,14 @@ def generate_detailed_markdown_report(
 > {prompt}
 
 ## Agent Utilization
-{chr(10).join([f"- {agent_name}: {percentage:.2f}%" for agent_name, percentage in utilization.items()])}
+{chr(10).join(
+    [f"- {agent.name}: {utilization.get(agent.name, 0.0):.2f}%" for agent in moa.agents] +
+    ([f"- Deep Research Agent: {utilization['Deep Research Agent']:.2f}%"] if 'Deep Research Agent' in utilization else []) +
+    [f"- {agent_name}: {percentage:.2f}%" for agent_name, percentage in utilization.items()
+     if agent_name not in [agent.name for agent in moa.agents] and agent_name != "Deep Research Agent"]
+)}
 
-*(Note: Utilization is a heuristic based on text similarity to the final output)*
+*(Note: Utilization is a heuristic based on text similarity to the final output.{' Deep Research Agent utilization is included if present.' if 'Deep Research Agent' in utilization else ''})*
 
 ## Intermediate Outputs
 """
