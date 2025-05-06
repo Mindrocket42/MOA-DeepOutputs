@@ -3,7 +3,11 @@ import asyncio
 import httpx # Use httpx for async requests
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
-from termcolor import colored
+try:
+    from termcolor import colored
+except ImportError:
+    def colored(text, color):
+        return text
 from pathlib import Path
 import re
 from difflib import SequenceMatcher
@@ -90,6 +94,7 @@ def get_agent_model(direct_var: str, symbolic_var: str, default: str = None) -> 
 AGENT1_MODEL = os.getenv("AGENT1_MODEL_SYMBOLIC") or os.getenv("AGENT1_MODEL")
 AGENT2_MODEL = os.getenv("AGENT2_MODEL_SYMBOLIC") or os.getenv("AGENT2_MODEL")
 AGENT3_MODEL = os.getenv("AGENT3_MODEL_SYMBOLIC") or os.getenv("AGENT3_MODEL")
+DEEP_RESEARCH_AGENT_MODEL = os.getenv("DEEP_RESEARCH_AGENT_MODEL_SYMBOLIC") or os.getenv("DEEP_RESEARCH_AGENT_MODEL")
 SYNTHESIS_AGENT_MODEL = os.getenv("SYNTHESIS_AGENT_MODEL_SYMBOLIC") or os.getenv("SYNTHESIS_AGENT_MODEL")
 DEVILS_ADVOCATE_AGENT_MODEL = os.getenv("DEVILS_ADVOCATE_AGENT_MODEL_SYMBOLIC") or os.getenv("DEVILS_ADVOCATE_AGENT_MODEL")
 FINAL_AGENT_MODEL = os.getenv("FINAL_AGENT_MODEL_SYMBOLIC") or os.getenv("FINAL_AGENT_MODEL")
@@ -106,11 +111,11 @@ HTTP_REFERER = os.getenv("HTTP_REFERER", "MOA_Demo/1.0") # Recommended: Your App
 X_TITLE = os.getenv("X_TITLE", "MOA Demo") # Recommended: Your App Name
 
 # Stage-specific max_tokens settings
-INITIAL_MAX_TOKENS = int(os.getenv("INITIAL_MAX_TOKENS", "1500"))
-AGGREGATION_MAX_TOKENS = int(os.getenv("AGGREGATION_MAX_TOKENS", "2500"))
-SYNTHESIS_MAX_TOKENS = int(os.getenv("SYNTHESIS_MAX_TOKENS", "4000"))
-DEVILS_ADVOCATE_MAX_TOKENS = int(os.getenv("DEVILS_ADVOCATE_MAX_TOKENS", "4000"))
-FINAL_MAX_TOKENS = int(os.getenv("FINAL_MAX_TOKENS", "2500"))
+INITIAL_MAX_TOKENS = None  # Let API default apply
+AGGREGATION_MAX_TOKENS = None  # Let API default apply
+SYNTHESIS_MAX_TOKENS = None  # Let API default apply
+DEVILS_ADVOCATE_MAX_TOKENS = int(os.getenv("DEVILS_ADVOCATE_MAX_TOKENS", "16000"))
+FINAL_MAX_TOKENS = int(os.getenv("FINAL_MAX_TOKENS", "6000"))
 
 # --- Custom Exception ---
 class AgentGenerationError(Exception):
@@ -246,8 +251,8 @@ class OpenRouterAgent(Agent):
                         headers={
                             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                             "Content-Type": "application/json",
-                            "Referer": HTTP_REFERER,
-                            "X-Title": X_TITLE,
+                            "Referer": "linktr.ee/mindrocket",
+                            "X-Title": "MOA-DeepOutputs",
                         },
                         timeout=API_TIMEOUT
                     )
@@ -271,11 +276,17 @@ class OpenRouterAgent(Agent):
 
 # --- Mixture of Agents Implementation ---
 class MixtureOfAgents:
-    def __init__(self, models: List[str], num_layers: int = 2):
+    def __init__(self, models: List[str], num_layers: int = 2, include_deep_research: bool = True):
+        """
+        include_deep_research: whether to run the Deep Research Agent in layer 1.
+        """
+        self.include_deep_research = include_deep_research
         if not models:
             raise ValueError("At least one agent model must be provided.")
 
         self.agents = [OpenRouterAgent(f"Agent {i+1}", model, f"Role {i+1}") for i, model in enumerate(models)]
+        # Add Deep Research Agent (Layer 1 only) if enabled
+        self.deep_research_agent = OpenRouterAgent("Deep Research Agent", DEEP_RESEARCH_AGENT_MODEL, "Deep Research Role") if self.include_deep_research else None
         self.num_layers = num_layers
         self.synthesis_agent = OpenRouterAgent("Synthesis Agent", SYNTHESIS_AGENT_MODEL, "Synthesizer Role")
         self.devils_advocate_agent = OpenRouterAgent("Devil's Advocate Agent", DEVILS_ADVOCATE_AGENT_MODEL, "Devil's Advocate Role")
@@ -288,6 +299,10 @@ class MixtureOfAgents:
         logger.info(f"  Synthesis agent using model: {self.synthesis_agent.model}")
         logger.info(f"  Devil's Advocate agent using model: {self.devils_advocate_agent.model}")
         logger.info(f"  Final agent using model: {self.final_agent.model}")
+        if self.deep_research_agent:
+            logger.info(f"  Deep Research Agent using model: {self.deep_research_agent.model}")
+        else:
+            logger.info("  Deep Research Agent disabled")
         logger.info(f"==========================================")
 
         # Shared HTTP client and Semaphore for rate limiting
@@ -328,6 +343,8 @@ class MixtureOfAgents:
         last_devils_advocate = ""
 
         for i in range(self.num_layers):
+            # Placeholder for Deep Research Agent response in Layer 1
+            deep_research_response = ""
             layer_num = i + 1
             logger.info(colored(f"\n* Layer {layer_num} started", "cyan"))
 
@@ -335,16 +352,37 @@ class MixtureOfAgents:
             logger.debug(f"Layer {layer_num} Prompt:\n{layer_prompt}")
 
             # --- Step 1: Initial Responses ---
-            initial_responses = await self.run_agents_concurrently(self.agents, layer_prompt, "initial response", INITIAL_MAX_TOKENS)
-            for agent_idx, response in enumerate(initial_responses):
-                 if agent_idx < len(all_agent_responses_for_utilization):
-                     all_agent_responses_for_utilization[agent_idx].append(response)
-            logger.info(colored(f"* Layer {layer_num} initial responses received ({len(initial_responses)} agents)", "green"))
+            if i == 0:
+                # Step 1: Initial Responses with optional Deep Research Agent
+                if self.include_deep_research and self.deep_research_agent:
+                    agents_to_run = self.agents + [self.deep_research_agent]
+                    initial_all = await self.run_agents_concurrently(agents_to_run, layer_prompt, "initial response", INITIAL_MAX_TOKENS)
+                    # Separate deep research response
+                    initial_responses = initial_all[:-1]
+                    deep_research_response = initial_all[-1]
+                    # Record base agents' responses for utilization
+                    for agent_idx, response in enumerate(initial_responses):
+                        all_agent_responses_for_utilization[agent_idx].append(response)
+                    logger.info(colored(f"* Layer {layer_num} initial responses received ({len(initial_all)} agents, including Deep Research)", "green"))
+                else:
+                    initial_responses = await self.run_agents_concurrently(self.agents, layer_prompt, "initial response", INITIAL_MAX_TOKENS)
+                    deep_research_response = ""
+                    for agent_idx, response in enumerate(initial_responses):
+                        all_agent_responses_for_utilization[agent_idx].append(response)
+                    logger.info(colored(f"* Layer {layer_num} initial responses received ({len(initial_responses)} agents, deep research disabled)", "green"))
+            else:
+                initial_responses = await self.run_agents_concurrently(self.agents, layer_prompt, "initial response", INITIAL_MAX_TOKENS)
+                for agent_idx, response in enumerate(initial_responses):
+                    all_agent_responses_for_utilization[agent_idx].append(response)
+                logger.info(colored(f"* Layer {layer_num} initial responses received ({len(initial_responses)} agents)", "green"))
 
             # --- Step 2: Aggregation & Peer Review ---
+            # --- Step 2: Aggregation & Peer Review ---
+            # Include Deep Research output in aggregation for Layer 1 if enabled
+            agg_inputs = initial_responses + ([deep_research_response] if i == 0 and self.include_deep_research else [])
             aggregation_responses = await self.run_agents_concurrently(
                 self.agents,
-                self.create_aggregation_prompt(prompt, layer_prompt, initial_responses),
+                self.create_aggregation_prompt(prompt, layer_prompt, agg_inputs),
                 "aggregation",
                 AGGREGATION_MAX_TOKENS
             )
@@ -359,10 +397,17 @@ class MixtureOfAgents:
             last_devils_advocate = devils_advocate # Update context for next layer
             logger.info(colored(f"* Layer {layer_num} synthesis and devil's advocate perspective generated", "green"))
 
+            # Build names list for initial responses, include Deep Research if enabled
+            init_names = [agent.name for agent in self.agents]
+            init_responses = initial_responses
+            if layer_num == 1 and self.include_deep_research and self.deep_research_agent:
+                init_names.append(self.deep_research_agent.name)
+                init_responses = initial_responses + [deep_research_response]
+
             layer_details.append({
                 "layer_number": layer_num,
                 "layer_prompt_details": "Original Prompt" if i == 0 else "Original Prompt + Synthesis/Critique from Layer " + str(i),
-                "initial_responses": list(zip([agent.name for agent in self.agents], initial_responses)),
+                "initial_responses": list(zip(init_names, init_responses)),
                 "aggregation_responses": list(zip([agent.name for agent in self.agents], aggregation_responses)),
                 "synthesis": synthesis,
                 "devils_advocate": devils_advocate,
@@ -951,6 +996,14 @@ async def main():
         
         # Read prompt from file
         prompt = read_prompt_from_file()
+        # Ask user whether to include Deep Research Agent responses
+        include_input = input("Include deep research (Y/N)? ")
+        include_deep_research = include_input.strip().lower() == 'y'
+        logger.info(f"Include deep research: {include_deep_research}")
+        # Disable deep research if no model configured
+        if include_deep_research and not DEEP_RESEARCH_AGENT_MODEL:
+            logger.warning("Deep research model not configured; disabling Deep Research Agent.")
+            include_deep_research = False
         
         # Generate base name for folder/files from prompt
         base_filename = sanitize_filename(prompt)
@@ -999,7 +1052,8 @@ async def main():
             
         moa = MixtureOfAgents(
             models=models_list,
-            num_layers=num_layers # Use configured number of layers
+            num_layers=num_layers, # Use configured number of layers
+            include_deep_research=include_deep_research
         )
         
         # --- Generate Response ---
