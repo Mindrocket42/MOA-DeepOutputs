@@ -1,2 +1,3 @@
 * text=auto
 _*/** filter=lfs diff=lfs merge=lfs -export
+_depricated/* !text !filter !merge !diff

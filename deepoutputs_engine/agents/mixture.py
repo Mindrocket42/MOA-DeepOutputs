@@ -13,6 +13,10 @@ from deepoutputs_engine.config import (
 from deepoutputs_engine.agents.openrouter import OpenRouterAgent
 from deepoutputs_engine.agents.base import AgentGenerationError
 from deepoutputs_engine.utils import sanitize_for_markdown
+from deepoutputs_engine.prompts import (
+    build_layer_prompt, build_aggregation_prompt, build_synthesis_prompt,
+    build_devils_advocate_prompt, build_final_prompt
+)
 
 try:
     from termcolor import colored
@@ -22,10 +26,6 @@ except ImportError:
 
 class MixtureOfAgents:
     def __init__(self, models: List[str], num_layers: int = 2, include_deep_research: bool = True, tracer=None):
-        """
-        include_deep_research: whether to run the Deep Research Agent in layer 1.
-        tracer: Tracer instance for logging API calls and responses.
-        """
         self.include_deep_research = include_deep_research
         self.tracer = tracer
         if not models:
@@ -68,27 +68,44 @@ class MixtureOfAgents:
         await self.client.aclose()
         logger.info("HTTP client closed.")
 
-    # Example of how to use the tracer in a method:
-    async def example_traced_api_call(self, agent, prompt, phase):
-        if self.tracer:
-            self.tracer.log({
-                "event": "api_call",
-                "agent": agent.name,
-                "model": agent.model,
-                "phase": phase,
-                "prompt": prompt
-            })
-        # ... perform API call ...
-        response = "dummy response"
-        if self.tracer:
-            self.tracer.log({
-                "event": "api_response",
-                "agent": agent.name,
-                "model": agent.model,
-                "phase": phase,
-                "response": response
-            })
-        return response
+    async def run_workflow(self, prompt: str) -> Dict[str, Any]:
+        """
+        Runs the full MoA workflow: initial agent calls, aggregation, synthesis, devil's advocate, final decision.
+        Returns a dictionary with all outputs needed for report generation.
+        """
+        layer_outputs = []
+        current_prompt = prompt
+        agent_outputs = []
 
-    # The rest of MixtureOfAgents methods should be updated to use self.tracer
-    # for logging API calls and responses at each phase.
+        # 1. Initial agent calls (Layer 1)
+        for idx, agent in enumerate(self.agents):
+            layer_prompt = build_layer_prompt(prompt, idx, config={})
+            output = await agent.generate(layer_prompt, self.client, self.semaphore, INITIAL_MAX_TOKENS)
+            agent_outputs.append(output)
+        layer_outputs.append({"layer": 1, "agent_outputs": agent_outputs})
+
+        # 2. Aggregation phase
+        aggregation_prompt = build_aggregation_prompt(agent_outputs, config={})
+        aggregation_output = await self.synthesis_agent.generate(aggregation_prompt, self.client, self.semaphore, AGGREGATION_MAX_TOKENS)
+        layer_outputs.append({"layer": 2, "aggregation_output": aggregation_output})
+
+        # 3. Synthesis phase
+        synthesis_prompt = build_synthesis_prompt(aggregation_output, config={})
+        synthesized_output = await self.synthesis_agent.generate(synthesis_prompt, self.client, self.semaphore, SYNTHESIS_MAX_TOKENS)
+        layer_outputs.append({"layer": 3, "synthesized_output": synthesized_output})
+
+        # 4. Devil's Advocate phase
+        devils_advocate_prompt = build_devils_advocate_prompt(synthesized_output, config={})
+        devils_advocate_output = await self.devils_advocate_agent.generate(devils_advocate_prompt, self.client, self.semaphore, DEVILS_ADVOCATE_MAX_TOKENS)
+        layer_outputs.append({"layer": 4, "devils_advocate_output": devils_advocate_output})
+
+        # 5. Final decision phase
+        final_prompt = build_final_prompt(devils_advocate_output, config={})
+        final_output = await self.final_agent.generate(final_prompt, self.client, self.semaphore, FINAL_MAX_TOKENS)
+        layer_outputs.append({"layer": 5, "final_output": final_output})
+
+        return {
+            "prompt": prompt,
+            "layer_outputs": layer_outputs,
+            "final_output": final_output
+        }

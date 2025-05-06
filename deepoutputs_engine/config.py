@@ -18,13 +18,20 @@ def log_env_vars():
     logger.info("===================================")
 
 # --- Agent Model Configuration ---
-AGENT1_MODEL = os.getenv("AGENT1_MODEL_SYMBOLIC") or os.getenv("AGENT1_MODEL")
-AGENT2_MODEL = os.getenv("AGENT2_MODEL_SYMBOLIC") or os.getenv("AGENT2_MODEL")
-AGENT3_MODEL = os.getenv("AGENT3_MODEL_SYMBOLIC") or os.getenv("AGENT3_MODEL")
-DEEP_RESEARCH_AGENT_MODEL = os.getenv("DEEP_RESEARCH_AGENT_MODEL_SYMBOLIC") or os.getenv("DEEP_RESEARCH_AGENT_MODEL")
-SYNTHESIS_AGENT_MODEL = os.getenv("SYNTHESIS_AGENT_MODEL_SYMBOLIC") or os.getenv("SYNTHESIS_AGENT_MODEL")
-DEVILS_ADVOCATE_AGENT_MODEL = os.getenv("DEVILS_ADVOCATE_AGENT_MODEL_SYMBOLIC") or os.getenv("DEVILS_ADVOCATE_AGENT_MODEL")
-FINAL_AGENT_MODEL = os.getenv("FINAL_AGENT_MODEL_SYMBOLIC") or os.getenv("FINAL_AGENT_MODEL")
+def resolve_model_env(var_name):
+    value = os.getenv(var_name)
+    # If the value is the name of another env var, resolve it recursively
+    if value and value in os.environ:
+        return os.getenv(value)
+    return value
+
+AGENT1_MODEL = resolve_model_env("AGENT1_MODEL") or os.getenv("AGENT1_MODEL_SYMBOLIC")
+AGENT2_MODEL = resolve_model_env("AGENT2_MODEL") or os.getenv("AGENT2_MODEL_SYMBOLIC")
+AGENT3_MODEL = resolve_model_env("AGENT3_MODEL") or os.getenv("AGENT3_MODEL_SYMBOLIC")
+DEEP_RESEARCH_AGENT_MODEL = resolve_model_env("DEEP_RESEARCH_AGENT_MODEL") or os.getenv("DEEP_RESEARCH_AGENT_MODEL_SYMBOLIC")
+SYNTHESIS_AGENT_MODEL = resolve_model_env("SYNTHESIS_AGENT_MODEL") or os.getenv("SYNTHESIS_AGENT_MODEL_SYMBOLIC")
+DEVILS_ADVOCATE_AGENT_MODEL = resolve_model_env("DEVILS_ADVOCATE_AGENT_MODEL") or os.getenv("DEVILS_ADVOCATE_AGENT_MODEL_SYMBOLIC")
+FINAL_AGENT_MODEL = resolve_model_env("FINAL_AGENT_MODEL") or os.getenv("FINAL_AGENT_MODEL_SYMBOLIC")
 
 # --- API and Concurrency Settings ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -43,3 +50,7 @@ AGGREGATION_MAX_TOKENS = None  # Let API default apply
 SYNTHESIS_MAX_TOKENS = None  # Let API default apply
 DEVILS_ADVOCATE_MAX_TOKENS = int(os.getenv("DEVILS_ADVOCATE_MAX_TOKENS", "32000"))
 FINAL_MAX_TOKENS = int(os.getenv("FINAL_MAX_TOKENS", "6000"))
+
+# --- MOA Orchestration Settings ---
+MOA_NUM_LAYERS = int(os.getenv("MOA_NUM_LAYERS", "2"))
+INCLUDE_DEEP_RESEARCH = os.getenv("INCLUDE_DEEP_RESEARCH", "true").lower() in ("1", "true", "yes")
