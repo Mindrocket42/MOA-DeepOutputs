@@ -54,7 +54,7 @@ This project forks [AI-MickyJ/Mixture-of-Agents](https://github.com/AI-MickyJ/Mi
 ## 5· System Overview Diagram
 
 ```mermaid
-flowchart LR
+flowchart TD
     A[Read prompt.txt & .env] --> B{Layered Processing}
     B --> C[Agent Analysis & Critique]
     C --> B
@@ -85,7 +85,7 @@ flowchart LR
 ```
 
 ```mermaid
-flowchart TD
+flowchart LR
     root["MOA-DeepOutputs"] --> E1["deepoutputs_engine.py"]
     root --> E2["prompt.txt"]
     root --> E3["requirements.txt"]
