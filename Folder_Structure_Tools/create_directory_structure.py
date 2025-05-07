@@ -55,57 +55,25 @@ def create_directory_structure(structure_text):
 
 # Your existing markdown_structure string remains the same
 markdown_structure = '''
-agent_system/
+MOA-DeepOutputs/
 │
-├── README.md
-├── requirements.txt
-├── setup.py
-│
-├── config/
+├── deepoutputs_engine/
 │   ├── __init__.py
-│   ├── model_config.yaml       # LLM and model parameters
-│   └── system_config.yaml      # System-wide settings
-│
-├── src/
-│   ├── __init__.py
-│   │
+│   ├── config.py
+│   ├── utils.py
+│   ├── tracing.py
+│   ├── prompts.py
+│   ├── reports.py
+│   ├── main.py
 │   ├── agents/
 │   │   ├── __init__.py
-│   │   ├── main_agent.py
-│   │   ├── sub_agent.py
-│   │   └── base_agent.py      # Abstract base class
-│   │
-│   ├── environment/
-│   │   ├── __init__.py
-│   │   └── environment.py
-│   │
-│   ├── memory/
-│   │   ├── __init__.py
-│   │   ├── shared_memory.py
-│   │   └── memory_manager.py
-│   │
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── llm_wrapper.py     # LLM initialization and interface
-│   │
-│   └── utils/
-│       ├── __init__.py
-│       ├── async_utils.py
-│       ├── logging_utils.py
-│       └── task_decomposer.py
+│   │   ├── base.py
+│   │   ├── openrouter.py
+│   │   └── mixture.py
 │
-├── tests/
-│   ├── __init__.py
-│   ├── test_main_agent.py
-│   ├── test_sub_agent.py
-│   └── test_environment.py
-│
-├── examples/
-│   ├── basic_usage.py
-│   └── advanced_scenarios.py
-│
-└── logs/
-    └── .gitkeep
+├── Traces/
+│   ├── markdown/
+│   └── json/
 '''
 
 # Create the directory structure

@@ -1,7 +1,8 @@
 import asyncio
 import httpx
 from deepoutputs_engine.config import (
-    OPENROUTER_API_KEY, API_TIMEOUT, API_RETRY_ATTEMPTS, API_INITIAL_BACKOFF
+    OPENROUTER_API_KEY, API_TIMEOUT, API_RETRY_ATTEMPTS, API_INITIAL_BACKOFF,
+    HTTP_REFERER, X_TITLE
 )
 from deepoutputs_engine.config import logger
 from deepoutputs_engine.agents.base import Agent, AgentGenerationError
@@ -62,8 +63,8 @@ class OpenRouterAgent(Agent):
                         headers={
                             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                             "Content-Type": "application/json",
-                            "HTTP-Referer": "linktr.ee/mindrocket",
-                            "X-Title": "MOA-DeepOutputs",
+                            "HTTP-Referer": HTTP_REFERER,
+                            "X-Title": X_TITLE,
                         },
                         timeout=API_TIMEOUT
                     )

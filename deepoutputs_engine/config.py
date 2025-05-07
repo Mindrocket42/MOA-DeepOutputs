@@ -41,8 +41,8 @@ API_INITIAL_BACKOFF = float(os.getenv("API_INITIAL_BACKOFF", "1.0"))  # Initial 
 API_TIMEOUT = float(os.getenv("API_TIMEOUT", "120.0"))  # Timeout for API calls
 
 # --- HTTP Headers ---
-HTTP_REFERER = os.getenv("HTTP_REFERER", "MOA_Demo/1.0")  # Recommended: Your App Name/Version
-X_TITLE = os.getenv("X_TITLE", "MOA Demo")  # Recommended: Your App Name
+HTTP_REFERRER = "linktr.ee/mindrocket"  # Hardcoded site URL
+X_TITLE = "MOA-DeepOutputs"  # Hardcoded app name
 
 # --- Stage-specific max_tokens settings ---
 INITIAL_MAX_TOKENS = None  # Let API default apply
@@ -54,3 +54,6 @@ FINAL_MAX_TOKENS = int(os.getenv("FINAL_MAX_TOKENS", "6000"))
 # --- MOA Orchestration Settings ---
 MOA_NUM_LAYERS = int(os.getenv("MOA_NUM_LAYERS", "2"))
 INCLUDE_DEEP_RESEARCH = os.getenv("INCLUDE_DEEP_RESEARCH", "true").lower() in ("1", "true", "yes")
+
+# --- Output Settings ---
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "reports")  # Directory for saving reports and outputs

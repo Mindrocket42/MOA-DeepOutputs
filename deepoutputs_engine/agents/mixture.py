@@ -1,5 +1,6 @@
 import asyncio
 import httpx
+import time
 from typing import List, Dict, Any, Tuple
 from difflib import SequenceMatcher
 
@@ -74,35 +75,169 @@ class MixtureOfAgents:
         Returns a dictionary with all outputs needed for report generation.
         """
         layer_outputs = []
-        current_prompt = prompt
-        agent_outputs = []
+        prev_synthesis = ""
+        prev_devils_advocate = ""
 
-        # 1. Initial agent calls (Layer 1)
-        for idx, agent in enumerate(self.agents):
-            layer_prompt = build_layer_prompt(prompt, idx, config={})
-            output = await agent.generate(layer_prompt, self.client, self.semaphore, INITIAL_MAX_TOKENS)
-            agent_outputs.append(output)
-        layer_outputs.append({"layer": 1, "agent_outputs": agent_outputs})
-
-        # 2. Aggregation phase
-        aggregation_prompt = build_aggregation_prompt(agent_outputs, config={})
-        aggregation_output = await self.synthesis_agent.generate(aggregation_prompt, self.client, self.semaphore, AGGREGATION_MAX_TOKENS)
-        layer_outputs.append({"layer": 2, "aggregation_output": aggregation_output})
-
-        # 3. Synthesis phase
-        synthesis_prompt = build_synthesis_prompt(aggregation_output, config={})
-        synthesized_output = await self.synthesis_agent.generate(synthesis_prompt, self.client, self.semaphore, SYNTHESIS_MAX_TOKENS)
-        layer_outputs.append({"layer": 3, "synthesized_output": synthesized_output})
-
-        # 4. Devil's Advocate phase
-        devils_advocate_prompt = build_devils_advocate_prompt(synthesized_output, config={})
-        devils_advocate_output = await self.devils_advocate_agent.generate(devils_advocate_prompt, self.client, self.semaphore, DEVILS_ADVOCATE_MAX_TOKENS)
-        layer_outputs.append({"layer": 4, "devils_advocate_output": devils_advocate_output})
+        for layer_idx in range(self.num_layers):
+            layer_start_time = time.time()
+            layer_details = {}
+            
+            # Log layer start
+            if self.tracer:
+                self.tracer.log_layer_event(
+                    layer_num=layer_idx + 1,
+                    event_type="Start",
+                    prompt=prompt,
+                    metrics={"expected_tokens": INITIAL_MAX_TOKENS, "concurrent_requests": len(self.agents)}
+                )
+            
+            # 1. Initial agent calls for this layer
+            layer_prompt = build_layer_prompt(prompt, prev_synthesis, prev_devils_advocate, layer_idx)
+            layer_details["layer_prompt_details"] = layer_prompt
+            
+            initial_responses = []
+            for agent in self.agents:
+                start_time = time.time()
+                output = await agent.generate(layer_prompt, self.client, self.semaphore, INITIAL_MAX_TOKENS)
+                duration = time.time() - start_time
+                
+                # Log API call
+                if self.tracer:
+                    self.tracer.log_api_call(
+                        model=agent.model,
+                        prompt=layer_prompt,
+                        response=output,
+                        duration=duration,
+                        tokens_used=len(output.split())  # Approximate token count
+                    )
+                
+                initial_responses.append((agent.name, output))
+            layer_details["initial_responses"] = initial_responses
+            
+            # 2. Aggregation phase
+            aggregation_responses = []
+            for agent in self.agents:
+                aggregation_prompt = build_aggregation_prompt(prompt, layer_prompt, [resp[1] for resp in initial_responses])
+                start_time = time.time()
+                output = await agent.generate(aggregation_prompt, self.client, self.semaphore, AGGREGATION_MAX_TOKENS)
+                duration = time.time() - start_time
+                
+                # Log API call
+                if self.tracer:
+                    self.tracer.log_api_call(
+                        model=agent.model,
+                        prompt=aggregation_prompt,
+                        response=output,
+                        duration=duration,
+                        tokens_used=len(output.split())  # Approximate token count
+                    )
+                
+                aggregation_responses.append((agent.name, output))
+            layer_details["aggregation_responses"] = aggregation_responses
+            
+            # 3. Synthesis phase
+            synthesis_prompt = build_synthesis_prompt(prompt, layer_prompt, [resp[1] for resp in aggregation_responses])
+            start_time = time.time()
+            synthesis = await self.synthesis_agent.generate(synthesis_prompt, self.client, self.semaphore, SYNTHESIS_MAX_TOKENS)
+            duration = time.time() - start_time
+            
+            # Log API call and check for synthesis overrides
+            if self.tracer:
+                self.tracer.log_api_call(
+                    model=self.synthesis_agent.model,
+                    prompt=synthesis_prompt,
+                    response=synthesis,
+                    duration=duration,
+                    tokens_used=len(synthesis.split())  # Approximate token count
+                )
+                
+                # Check for synthesis overrides
+                for agent_name, response in initial_responses:
+                    if SequenceMatcher(None, response, synthesis).ratio() < 0.5:  # Significant difference
+                        self.tracer.log_decision_point(
+                            decision_type="synthesis_override",
+                            context={
+                                "layer": layer_idx + 1,
+                                "agent": agent_name,
+                                "original_response": response,
+                                "synthesis": synthesis
+                            },
+                            outcome="synthesis_modified_agent_response"
+                        )
+            
+            layer_details["synthesis"] = synthesis
+            prev_synthesis = synthesis
+            
+            # 4. Devil's Advocate phase
+            devils_advocate_prompt = build_devils_advocate_prompt(prompt, layer_prompt, [resp[1] for resp in aggregation_responses])
+            start_time = time.time()
+            devils_advocate = await self.devils_advocate_agent.generate(devils_advocate_prompt, self.client, self.semaphore, DEVILS_ADVOCATE_MAX_TOKENS)
+            duration = time.time() - start_time
+            
+            # Log API call and check for challenges
+            if self.tracer:
+                self.tracer.log_api_call(
+                    model=self.devils_advocate_agent.model,
+                    prompt=devils_advocate_prompt,
+                    response=devils_advocate,
+                    duration=duration,
+                    tokens_used=len(devils_advocate.split())  # Approximate token count
+                )
+                
+                # Check for devil's advocate challenges
+                if "challenge" in devils_advocate.lower() or "issue" in devils_advocate.lower():
+                    self.tracer.log_decision_point(
+                        decision_type="devil_advocate_challenge",
+                        context={
+                            "layer": layer_idx + 1,
+                            "synthesis": synthesis,
+                            "challenge": devils_advocate
+                        },
+                        outcome="challenge_identified"
+                    )
+            
+            layer_details["devils_advocate"] = devils_advocate
+            prev_devils_advocate = devils_advocate
+            
+            # Log layer completion
+            layer_duration = time.time() - layer_start_time
+            if self.tracer:
+                self.tracer.log_layer_event(
+                    layer_num=layer_idx + 1,
+                    event_type="End",
+                    prompt=prompt,
+                    metrics={"duration": layer_duration}
+                )
+                self.tracer.performance["layer_times"].append(layer_duration)
+            
+            layer_details["layer_number"] = layer_idx + 1
+            layer_outputs.append(layer_details)
 
         # 5. Final decision phase
-        final_prompt = build_final_prompt(devils_advocate_output, config={})
+        final_prompt = build_final_prompt(prompt, layer_outputs)
+        start_time = time.time()
         final_output = await self.final_agent.generate(final_prompt, self.client, self.semaphore, FINAL_MAX_TOKENS)
-        layer_outputs.append({"layer": 5, "final_output": final_output})
+        duration = time.time() - start_time
+        
+        # Log final API call
+        if self.tracer:
+            self.tracer.log_api_call(
+                model=self.final_agent.model,
+                prompt=final_prompt,
+                response=final_output,
+                duration=duration,
+                tokens_used=len(final_output.split())  # Approximate token count
+            )
+            
+            # Log resource usage
+            self.tracer.log_resource_usage(
+                resource_type="api_calls",
+                usage={
+                    "total_calls": sum(self.tracer.metrics["api_calls"].values()),
+                    "calls_per_model": dict(self.tracer.metrics["api_calls"]),
+                    "total_tokens": self.tracer.performance["total_tokens"]
+                }
+            )
 
         return {
             "prompt": prompt,
