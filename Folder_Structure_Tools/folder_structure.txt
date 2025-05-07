@@ -1,0 +1,19 @@
+MOA-DeepOutputs/
+│
+├── deepoutputs_engine/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── utils.py
+│   ├── tracing.py
+│   ├── prompts.py
+│   ├── reports.py
+│   ├── main.py
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── openrouter.py
+│   │   └── mixture.py
+│
+├── Traces/
+│   ├── markdown/
+│   └── json/
