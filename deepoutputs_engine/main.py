@@ -20,9 +20,13 @@ async def main():
         # Import config
         from deepoutputs_engine.config import (
             AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL,
+            DEEP_RESEARCH_AGENT_MODEL,
             MOA_NUM_LAYERS, INCLUDE_DEEP_RESEARCH,
             OUTPUT_DIR
         )
+
+        # Use INCLUDE_DEEP_RESEARCH from config
+        logger.info(f"INCLUDE_DEEP_RESEARCH from config: {INCLUDE_DEEP_RESEARCH}")
 
         # Create run-specific directory
         run_dir = Path(OUTPUT_DIR) / run_id
@@ -34,18 +38,25 @@ async def main():
         file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         logger.addHandler(file_handler)
 
+        # Build models list
+        models_list = [AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL]
+        if INCLUDE_DEEP_RESEARCH:
+            logger.info(f"Including DeepResearch agent with model: {DEEP_RESEARCH_AGENT_MODEL}")
+            models_list.append(DEEP_RESEARCH_AGENT_MODEL)
+        else:
+            logger.info("DeepResearch agent not included in this run.")
+
         logger.info(f"Starting MOA workflow with run_id: {run_id}")
-        logger.info(f"Using models: {[AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL]}")
+        logger.info(f"Using models: {models_list}")
 
         # Log initial configuration
         tracer.log_workflow_event("Configuration", {
-            "models": [AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL],
+            "models": models_list,
             "num_layers": MOA_NUM_LAYERS,
             "include_deep_research": INCLUDE_DEEP_RESEARCH,
             "prompt": prompt
         })
 
-        models_list = [AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL]
         moa = MixtureOfAgents(
             models=models_list,
             num_layers=MOA_NUM_LAYERS,

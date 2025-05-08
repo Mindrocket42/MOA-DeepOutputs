@@ -41,8 +41,12 @@ API_INITIAL_BACKOFF = float(os.getenv("API_INITIAL_BACKOFF", "1.0"))  # Initial 
 API_TIMEOUT = float(os.getenv("API_TIMEOUT", "120.0"))  # Timeout for API calls
 
 # --- HTTP Headers ---
-HTTP_REFERRER = "linktr.ee/mindrocket"  # Hardcoded site URL
-X_TITLE = "MOA-DeepOutputs"  # Hardcoded app name
+# These values are intentionally hardcoded and not configurable via environment variables.
+HTTP_REFERER = "linktr.ee/mindrocket"  # Hardcoded site URL for OpenRouter header
+X_TITLE = "MOA-DeepOutputs"            # Hardcoded app name for OpenRouter header
+
+logger.info(f"Using hardcoded HTTP_REFERER: {HTTP_REFERER}")
+logger.info(f"Using hardcoded X_TITLE: {X_TITLE}")
 
 # --- Stage-specific max_tokens settings ---
 INITIAL_MAX_TOKENS = None  # Let API default apply

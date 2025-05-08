@@ -57,15 +57,17 @@ class OpenRouterAgent(Agent):
         for attempt in range(API_RETRY_ATTEMPTS):
             try:
                 async with semaphore:
+                    # Log the headers that will be sent
+                    final_headers = {
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": HTTP_REFERER,
+                        "X-Title": X_TITLE,
+                    }
+                    logger.info(f"[OpenRouterAgent] Sending headers: {final_headers}")
                     response = await client.post(
                         "https://openrouter.ai/api/v1/chat/completions",
                         json=payload,
-                        headers={
-                            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                            "Content-Type": "application/json",
-                            "HTTP-Referer": HTTP_REFERER,
-                            "X-Title": X_TITLE,
-                        },
                         timeout=API_TIMEOUT
                     )
                 response.raise_for_status()
