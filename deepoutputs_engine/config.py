@@ -41,7 +41,7 @@ API_INITIAL_BACKOFF = float(os.getenv("API_INITIAL_BACKOFF", "1.0"))  # Initial 
 API_TIMEOUT = float(os.getenv("API_TIMEOUT", "120.0"))  # Timeout for API calls
 
 # --- HTTP Headers ---
-HTTP_REFERRER = "linktr.ee/mindrocket"  # Hardcoded site URL
+HTTP_REFERER = "linktr.ee/mindrocket"  # Hardcoded site URL
 X_TITLE = "MOA-DeepOutputs"  # Hardcoded app name
 
 # --- Stage-specific max_tokens settings ---
