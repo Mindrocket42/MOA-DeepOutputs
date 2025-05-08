@@ -4,11 +4,12 @@ import time
 from typing import List, Dict, Any, Tuple
 from difflib import SequenceMatcher
 
+import os
 from deepoutputs_engine.config import (
     AGENT1_MODEL, AGENT2_MODEL, AGENT3_MODEL, DEEP_RESEARCH_AGENT_MODEL,
     SYNTHESIS_AGENT_MODEL, DEVILS_ADVOCATE_AGENT_MODEL, FINAL_AGENT_MODEL,
-    OPENROUTER_CONCURRENCY, OPENROUTER_API_KEY, API_TIMEOUT, API_RETRY_ATTEMPTS,
-    API_INITIAL_BACKOFF, HTTP_REFERER, X_TITLE, INITIAL_MAX_TOKENS, AGGREGATION_MAX_TOKENS,
+    OPENROUTER_CONCURRENCY, API_TIMEOUT, API_RETRY_ATTEMPTS,
+    API_INITIAL_BACKOFF, INITIAL_MAX_TOKENS, AGGREGATION_MAX_TOKENS,
     SYNTHESIS_MAX_TOKENS, DEVILS_ADVOCATE_MAX_TOKENS, FINAL_MAX_TOKENS, logger
 )
 from deepoutputs_engine.agents.openrouter import OpenRouterAgent
@@ -51,6 +52,10 @@ class MixtureOfAgents:
             logger.info("  Deep Research Agent disabled")
         logger.info(f"==========================================")
 
+        # Load header values from environment variables, matching the working test script
+        OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+        HTTP_REFERER = os.getenv("HTTP_REFERER")
+        X_TITLE = os.getenv("X_TITLE")
         self.client = httpx.AsyncClient(
             base_url="https://openrouter.ai/api/v1",
             headers={
