@@ -1,0 +1,523 @@
+{
+  "metadata": {
+    "generated_at": "2025-01-07T22:32:10Z",
+    "source": "automated deep static analysis"
+  },
+  "schema_version": "2.0",
+  "files": {
+    "deepoutputs_engine/main.py": {
+      "type": "python",
+      "summary": "Main entry point that orchestrates the MOA workflow with tracing, report generation, and error handling.",
+      "imports": [
+        { "module": "time", "is_local": false },
+        { "module": "os", "is_local": false },
+        { "module": "logging", "is_local": false },
+        { "module": "pathlib.Path", "is_local": false },
+        { "module": "deepoutputs_engine.config", "is_local": true },
+        { "module": "deepoutputs_engine.utils", "is_local": true },
+        { "module": "deepoutputs_engine.agents.mixture", "is_local": true },
+        { "module": "deepoutputs_engine.tracing", "is_local": true },
+        { "module": "deepoutputs_engine.reports", "is_local": true },
+        { "module": "difflib.SequenceMatcher", "is_local": false },
+        { "module": "asyncio", "is_local": false }
+      ],
+      "definitions": {
+        "main": {
+          "type": "function",
+          "parameters": [],
+          "returns": "None",
+          "summary": "Async main function that runs the complete MOA workflow from setup to report generation.",
+          "calls": [
+            "deepoutputs_engine.utils::read_prompt_from_file",
+            "deepoutputs_engine.utils::sanitize_filename",
+            "deepoutputs_engine.tracing::Tracer",
+            "deepoutputs_engine.agents.mixture::MixtureOfAgents",
+            "deepoutputs_engine.reports::generate_markdown_report",
+            "deepoutputs_engine.reports::generate_detailed_markdown_report"
+          ]
+        }
+      }
+    },
+    "deepoutputs_engine/agents/mixture.py": {
+      "type": "python",
+      "summary": "Core orchestration class that manages multiple agents through layered processing with synthesis and devil's advocate phases.",
+      "imports": [
+        { "module": "asyncio", "is_local": false },
+        { "module": "httpx", "is_local": false },
+        { "module": "time", "is_local": false },
+        { "module": "typing", "is_local": false },
+        { "module": "difflib.SequenceMatcher", "is_local": false },
+        { "module": "os", "is_local": false },
+        { "module": "deepoutputs_engine.config", "is_local": true },
+        { "module": "deepoutputs_engine.agents.openrouter", "is_local": true },
+        { "module": "deepoutputs_engine.agents.base", "is_local": true },
+        { "module": "deepoutputs_engine.utils", "is_local": true },
+        { "module": "deepoutputs_engine.prompts", "is_local": true },
+        { "module": "termcolor", "is_local": false }
+      ],
+      "definitions": {
+        "MixtureOfAgents": {
+          "type": "class",
+          "inherits_from": null,
+          "summary": "Main orchestration class that manages multiple OpenRouter agents through layered processing workflow.",
+          "methods": {
+            "__init__": {
+              "type": "function",
+              "parameters": ["self", "models: List[str]", "num_layers: int = 2", "include_deep_research: bool = True", "tracer=None"],
+              "returns": "None",
+              "summary": "Initializes the mixture of agents with specified models and configuration.",
+              "calls": [
+                "deepoutputs_engine.agents.openrouter::OpenRouterAgent"
+              ]
+            },
+            "close_client": {
+              "type": "function",
+              "parameters": ["self"],
+              "returns": "None",
+              "summary": "Closes the shared httpx client for cleanup.",
+              "calls": []
+            },
+            "run_workflow": {
+              "type": "function",
+              "parameters": ["self", "prompt: str"],
+              "returns": "Dict[str, Any]",
+              "summary": "Runs the complete MOA workflow through multiple layers with synthesis and devil's advocate phases.",
+              "calls": [
+                "deepoutputs_engine.prompts::build_layer_prompt",
+                "deepoutputs_engine.prompts::build_aggregation_prompt",
+                "deepoutputs_engine.prompts::build_synthesis_prompt",
+                "deepoutputs_engine.prompts::build_devils_advocate_prompt",
+                "deepoutputs_engine.prompts::build_final_prompt"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "deepoutputs_engine/agents/base.py": {
+      "type": "python",
+      "summary": "Base classes and exceptions for the agent system architecture.",
+      "imports": [],
+      "definitions": {
+        "AgentGenerationError": {
+          "type": "class",
+          "inherits_from": "Exception",
+          "summary": "Custom exception for agent generation failures.",
+          "methods": {}
+        },
+        "Agent": {
+          "type": "class",
+          "inherits_from": null,
+          "summary": "Base abstract class for all agents defining the common interface.",
+          "methods": {
+            "__init__": {
+              "type": "function",
+              "parameters": ["self", "name: str", "model: str", "role: str"],
+              "returns": "None",
+              "summary": "Initializes base agent with name, model, and role.",
+              "calls": []
+            },
+            "generate": {
+              "type": "function",
+              "parameters": ["self", "prompt: str", "client", "semaphore", "max_tokens: int"],
+              "returns": "NotImplementedError",
+              "summary": "Abstract method for generating responses that must be implemented by subclasses.",
+              "calls": []
+            }
+          }
+        }
+      }
+    },
+    "deepoutputs_engine/agents/openrouter.py": {
+      "type": "python",
+      "summary": "OpenRouter API implementation of the Agent base class with retry logic and rate limiting.",
+      "imports": [
+        { "module": "asyncio", "is_local": false },
+        { "module": "httpx", "is_local": false },
+        { "module": "deepoutputs_engine.config", "is_local": true },
+        { "module": "deepoutputs_engine.agents.base", "is_local": true }
+      ],
+      "definitions": {
+        "OpenRouterAgent": {
+          "type": "class",
+          "inherits_from": "Agent",
+          "summary": "Concrete implementation of Agent using OpenRouter API with retry logic and concurrency control.",
+          "methods": {
+            "__init__": {
+              "type": "function",
+              "parameters": ["self", "name: str", "model: str", "role: str"],
+              "returns": "None",
+              "summary": "Initializes OpenRouter agent by calling parent constructor.",
+              "calls": [
+                "deepoutputs_engine.agents.base::Agent.__init__"
+              ]
+            },
+            "generate": {
+              "type": "function",
+              "parameters": ["self", "prompt: str", "client: httpx.AsyncClient", "semaphore: asyncio.Semaphore", "max_tokens: int = 4000"],
+              "returns": "str",
+              "summary": "Generates response using OpenRouter API with exponential backoff retry logic.",
+              "calls": []
+            }
+          }
+        }
+      }
+    },
+    "deepoutputs_engine/config.py": {
+      "type": "python",
+      "summary": "Configuration module that loads environment variables and sets up logging for the entire application.",
+      "imports": [
+        { "module": "os", "is_local": false },
+        { "module": "dotenv", "is_local": false },
+        { "module": "logging", "is_local": false }
+      ],
+      "definitions": {
+        "log_env_vars": {
+          "type": "function",
+          "parameters": [],
+          "returns": "None",
+          "summary": "Debug function to log environment variables containing MODEL or AGENT.",
+          "calls": []
+        },
+        "resolve_model_env": {
+          "type": "function",
+          "parameters": ["var_name"],
+          "returns": "str",
+          "summary": "Resolves environment variable values recursively for model configuration.",
+          "calls": []
+        }
+      }
+    },
+    "deepoutputs_engine/utils.py": {
+      "type": "python",
+      "summary": "Utility functions for file operations, text processing, and data serialization.",
+      "imports": [
+        { "module": "logging", "is_local": false },
+        { "module": "re", "is_local": false },
+        { "module": "json", "is_local": false },
+        { "module": "pathlib.Path", "is_local": false },
+        { "module": "typing", "is_local": false }
+      ],
+      "definitions": {
+        "read_prompt_from_file": {
+          "type": "function",
+          "parameters": ["file_path: str = \"prompt.txt\""],
+          "returns": "str",
+          "summary": "Reads and returns the prompt content from a specified file.",
+          "calls": []
+        },
+        "sanitize_filename": {
+          "type": "function",
+          "parameters": ["text: str", "max_length: int = 50"],
+          "returns": "str",
+          "summary": "Sanitizes text to create valid filenames by removing invalid characters and truncating.",
+          "calls": []
+        },
+        "sanitize_for_markdown": {
+          "type": "function",
+          "parameters": ["text: str"],
+          "returns": "str",
+          "summary": "Escapes text to prevent markdown formatting issues, especially with code blocks.",
+          "calls": []
+        },
+        "ensure_directory": {
+          "type": "function",
+          "parameters": ["directory: str"],
+          "returns": "Path",
+          "summary": "Creates directory if it doesn't exist and returns Path object.",
+          "calls": []
+        },
+        "save_json": {
+          "type": "function",
+          "parameters": ["data: Any", "filepath: str", "indent: int = 2"],
+          "returns": "None",
+          "summary": "Saves data to JSON file with error handling.",
+          "calls": []
+        },
+        "load_json": {
+          "type": "function",
+          "parameters": ["filepath: str"],
+          "returns": "Any",
+          "summary": "Loads data from JSON file with error handling.",
+          "calls": []
+        },
+        "truncate_text": {
+          "type": "function",
+          "parameters": ["text: str", "max_length: int = 1000", "suffix: str = \"...\""],
+          "returns": "str",
+          "summary": "Truncates text while preserving word boundaries.",
+          "calls": []
+        },
+        "format_timestamp": {
+          "type": "function",
+          "parameters": ["timestamp: Optional[float] = None"],
+          "returns": "str",
+          "summary": "Formats timestamp in consistent string format.",
+          "calls": []
+        }
+      }
+    },
+    "deepoutputs_engine/prompts.py": {
+      "type": "python",
+      "summary": "Prompt construction logic for different phases of the MOA workflow including layer, aggregation, synthesis, and final prompts.",
+      "imports": [
+        { "module": "typing", "is_local": false }
+      ],
+      "definitions": {
+        "build_layer_prompt": {
+          "type": "function",
+          "parameters": ["original_prompt: str", "prev_synthesis: str", "prev_devils_advocate: str", "layer_index: int"],
+          "returns": "str",
+          "summary": "Creates context-aware prompts for agents in specific layers of the MOA workflow.",
+          "calls": []
+        },
+        "build_aggregation_prompt": {
+          "type": "function",
+          "parameters": ["original_prompt: str", "current_layer_prompt: str", "initial_responses: List[str]"],
+          "returns": "str",
+          "summary": "Creates prompts for the aggregation/peer review phase that critiques initial responses.",
+          "calls": []
+        },
+        "build_synthesis_prompt": {
+          "type": "function",
+          "parameters": ["original_prompt: str", "current_layer_prompt: str", "aggregated_responses: List[str]"],
+          "returns": "str",
+          "summary": "Creates prompts for synthesis agent to unify and analyze aggregated responses.",
+          "calls": []
+        },
+        "build_devils_advocate_prompt": {
+          "type": "function",
+          "parameters": ["original_prompt: str", "current_layer_prompt: str", "aggregated_responses: List[str]"],
+          "returns": "str",
+          "summary": "Creates prompts for devil's advocate agent to challenge and critique consensus.",
+          "calls": []
+        },
+        "build_final_prompt": {
+          "type": "function",
+          "parameters": ["original_prompt: str", "layer_details: List[Dict[str, Any]]"],
+          "returns": "str",
+          "summary": "Creates the final prompt that synthesizes all layer outputs into definitive answer.",
+          "calls": []
+        }
+      }
+    },
+    "deepoutputs_engine/tracing.py": {
+      "type": "python",
+      "summary": "Comprehensive tracing system for logging API calls, workflow events, and performance metrics with markdown and JSON output.",
+      "imports": [
+        { "module": "os", "is_local": false },
+        { "module": "json", "is_local": false },
+        { "module": "time", "is_local": false },
+        { "module": "logging", "is_local": false },
+        { "module": "pathlib.Path", "is_local": false },
+        { "module": "typing", "is_local": false },
+        { "module": "datetime", "is_local": false },
+        { "module": "collections.defaultdict", "is_local": false }
+      ],
+      "definitions": {
+        "Tracer": {
+          "type": "class",
+          "inherits_from": null,
+          "summary": "Enhanced tracer for logging API calls, workflow events, and performance metrics to both markdown and JSON formats.",
+          "methods": {
+            "__init__": {
+              "type": "function",
+              "parameters": ["self", "run_id: str", "enabled: bool = True", "base_dir: str = \"Traces\""],
+              "returns": "None",
+              "summary": "Initializes tracer with file paths and metrics tracking structures.",
+              "calls": []
+            },
+            "log": {
+              "type": "function",
+              "parameters": ["self", "event: Dict[str, Any]", "level: str = \"info\""],
+              "returns": "None",
+              "summary": "Core logging method that writes events to both markdown and JSONL files.",
+              "calls": [
+                "self._format_md"
+              ]
+            },
+            "_format_md": {
+              "type": "function",
+              "parameters": ["self", "event: Dict[str, Any]"],
+              "returns": "str",
+              "summary": "Formats event data as markdown for human-readable trace files.",
+              "calls": []
+            },
+            "log_api_call": {
+              "type": "function",
+              "parameters": ["self", "model: str", "prompt: str", "response: str", "duration: float", "tokens_used: Optional[int] = None", "rate_limit_remaining: Optional[int] = None", "error: Optional[str] = None"],
+              "returns": "None",
+              "summary": "Logs API calls with standardized format and updates metrics.",
+              "calls": [
+                "self.log"
+              ]
+            },
+            "log_workflow_event": {
+              "type": "function",
+              "parameters": ["self", "event_name: str", "details: Dict[str, Any]", "error: Optional[str] = None"],
+              "returns": "None",
+              "summary": "Logs workflow events with standardized format.",
+              "calls": [
+                "self.log"
+              ]
+            },
+            "log_layer_event": {
+              "type": "function",
+              "parameters": ["self", "layer_num: int", "event_type: str", "prompt: str", "metrics: Optional[Dict[str, Any]] = None"],
+              "returns": "None",
+              "summary": "Logs layer-specific events during MOA processing.",
+              "calls": [
+                "self.log"
+              ]
+            },
+            "log_agent_interaction": {
+              "type": "function",
+              "parameters": ["self", "agent1: str", "agent2: str", "interaction_type: str", "details: Dict[str, Any]"],
+              "returns": "None",
+              "summary": "Logs interactions between different agents.",
+              "calls": [
+                "self.log"
+              ]
+            },
+            "log_decision_point": {
+              "type": "function",
+              "parameters": ["self", "decision_type: str", "context: Dict[str, Any]", "outcome: str"],
+              "returns": "None",
+              "summary": "Logs decision points in the workflow for analysis.",
+              "calls": [
+                "self.log"
+              ]
+            },
+            "log_resource_usage": {
+              "type": "function",
+              "parameters": ["self", "resource_type: str", "usage: Dict[str, Any]"],
+              "returns": "None",
+              "summary": "Logs resource usage metrics.",
+              "calls": [
+                "self.log"
+              ]
+            },
+            "get_summary": {
+              "type": "function",
+              "parameters": ["self"],
+              "returns": "Dict[str, Any]",
+              "summary": "Generates comprehensive summary of the run with performance metrics.",
+              "calls": [
+                "self.log"
+              ]
+            },
+            "close": {
+              "type": "function",
+              "parameters": ["self"],
+              "returns": "None",
+              "summary": "Closes trace files and logs final summary.",
+              "calls": [
+                "self.get_summary"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "_depricated/moa_model.py": {
+      "type": "python",
+      "summary": "Legacy implementation using direct API clients for OpenAI, Anthropic, and Google models before migration to OpenRouter.",
+      "imports": [
+        { "module": "os", "is_local": false },
+        { "module": "asyncio", "is_local": false },
+        { "module": "typing", "is_local": false },
+        { "module": "openai", "is_local": false },
+        { "module": "anthropic", "is_local": false },
+        { "module": "google.generativeai", "is_local": false },
+        { "module": "dotenv", "is_local": false },
+        { "module": "termcolor", "is_local": false },
+        { "module": "pathlib", "is_local": false },
+        { "module": "html", "is_local": false },
+        { "module": "re", "is_local": false },
+        { "module": "difflib", "is_local": false },
+        { "module": "logging", "is_local": false }
+      ],
+      "definitions": {
+        "Agent": {
+          "type": "class",
+          "inherits_from": null,
+          "summary": "Legacy base agent class before refactoring to current architecture.",
+          "methods": {
+            "__init__": {
+              "type": "function",
+              "parameters": ["self", "name: str", "model: str", "role: str"],
+              "returns": "None",
+              "summary": "Initializes legacy agent with basic properties.",
+              "calls": []
+            },
+            "generate": {
+              "type": "function",
+              "parameters": ["self", "prompt: str"],
+              "returns": "str",
+              "summary": "Abstract method for response generation in legacy system.",
+              "calls": []
+            }
+          }
+        },
+        "GPT4Agent": {
+          "type": "class",
+          "inherits_from": "Agent",
+          "summary": "Legacy OpenAI GPT-4 agent implementation before OpenRouter migration.",
+          "methods": {
+            "__init__": {
+              "type": "function",
+              "parameters": ["self"],
+              "returns": "None",
+              "summary": "Initializes GPT-4 agent with OpenAI client.",
+              "calls": []
+            },
+            "generate": {
+              "type": "function",
+              "parameters": ["self", "prompt: str", "max_tokens: int = 1000"],
+              "returns": "str",
+              "summary": "Generates response using OpenAI API directly.",
+              "calls": []
+            }
+          }
+        },
+        "ClaudeAgent": {
+          "type": "class",
+          "inherits_from": "Agent",
+          "summary": "Legacy Anthropic Claude agent implementation before OpenRouter migration.",
+          "methods": {
+            "__init__": {
+              "type": "function",
+              "parameters": ["self"],
+              "returns": "None",
+              "summary": "Initializes Claude agent with Anthropic client.",
+              "calls": []
+            },
+            "generate": {
+              "type": "function",
+              "parameters": ["self", "prompt: str", "max_tokens: int = 1000"],
+              "returns": "str",
+              "summary": "Generates response using Anthropic API directly.",
+              "calls": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "project_dependencies": [
+    "asyncio",
+    "httpx",
+    "typing",
+    "difflib",
+    "os",
+    "time",
+    "logging",
+    "pathlib",
+    "dotenv",
+    "termcolor",
+    "json",
+    "re",
+    "datetime",
+    "collections"
+  ]
+}

@@ -6,7 +6,14 @@
 *.tmp
 *.bak
 *.old
-*~      # Backup files (various editors)
+test.py
+   
+# Backup files (various editors)
+.history/
+_depricated
+_reports
+reports
+Traces
 
 # Windows
 Thumbs.db

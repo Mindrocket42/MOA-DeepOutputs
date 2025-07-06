@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Codebase Analysis Report</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        #report-container { display: flex; width: 98%; gap: 16px; margin-top: 20px; }
+        #graph-container { flex-grow: 1; border: 1px solid #ccc; padding: 10px; border-radius: 8px; }
+        #sidebar { width: 450px; flex-shrink: 0; border: 1px solid #ccc; padding: 10px; border-radius: 8px; max-height: 85vh; overflow-y: auto; }
+        h1, h2 { color: #333; }
+        #analysis-report h3 { border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 20px; color: #16a085; }
+        #analysis-report ul { list-style-type: none; padding-left: 0; }
+        #analysis-report li { background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9em; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        #analysis-report strong { color: #c0392b; }
+        #analysis-report code { background-color: #ecf0f1; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+        /* Mermaid Node Styling */
+        .classNode { fill:#DDA0DD; stroke:#8A2BE2; stroke-width:2px; }
+        .functionNode { fill:#87CEEB; stroke:#4682B4; stroke-width:2px; }
+        .dependencyNode { fill:#90EE90; stroke:#2E8B57; stroke-width:2px; }
+        .fileNode { fill:#FFFACD; stroke:#FFD700; stroke-width:2px; }
+    </style>
+</head>
+<body>
+    <h1>Codebase Architecture & Refactoring Report</h1>
+    <div id="report-container">
+        <div id="graph-container">
+            <h2>Knowledge Graph</h2>
+            <pre class="mermaid">
+graph LR;
+    %% File Subgraphs and Node Definitions
+    subgraph file_main ["deepoutputs_engine/main.py"]
+        func_main_main("main()"):::functionNode
+    end
+    
+    subgraph file_mixture ["deepoutputs_engine/agents/mixture.py"]
+        class_mixture_MixtureOfAgents("MixtureOfAgents"):::classNode
+        func_mixture_init("__init__()"):::functionNode
+        func_mixture_close_client("close_client()"):::functionNode
+        func_mixture_run_workflow("run_workflow()"):::functionNode
+    end
+    
+    subgraph file_base ["deepoutputs_engine/agents/base.py"]
+        class_base_Agent("Agent"):::classNode
+        class_base_AgentGenerationError("AgentGenerationError"):::classNode
+        func_base_agent_init("Agent.__init__()"):::functionNode
+        func_base_agent_generate("Agent.generate()"):::functionNode
+    end
+    
+    subgraph file_openrouter ["deepoutputs_engine/agents/openrouter.py"]
+        class_openrouter_OpenRouterAgent("OpenRouterAgent"):::classNode
+        func_openrouter_init("__init__()"):::functionNode
+        func_openrouter_generate("generate()"):::functionNode
+    end
+    
+    subgraph file_config ["deepoutputs_engine/config.py"]
+        func_config_log_env_vars("log_env_vars()"):::functionNode
+        func_config_resolve_model_env("resolve_model_env()"):::functionNode
+    end
+    
+    subgraph file_utils ["deepoutputs_engine/utils.py"]
+        func_utils_read_prompt("read_prompt_from_file()"):::functionNode
+        func_utils_sanitize_filename("sanitize_filename()"):::functionNode
+        func_utils_sanitize_markdown("sanitize_for_markdown()"):::functionNode
+        func_utils_ensure_directory("ensure_directory()"):::functionNode
+        func_utils_save_json("save_json()"):::functionNode
+        func_utils_load_json("load_json()"):::functionNode
+        func_utils_truncate_text("truncate_text()"):::functionNode
+        func_utils_format_timestamp("format_timestamp()"):::functionNode
+    end
+    
+    subgraph file_prompts ["deepoutputs_engine/prompts.py"]
+        func_prompts_build_layer("build_layer_prompt()"):::functionNode
+        func_prompts_build_aggregation("build_aggregation_prompt()"):::functionNode
+        func_prompts_build_synthesis("build_synthesis_prompt()"):::functionNode
+        func_prompts_build_devils_advocate("build_devils_advocate_prompt()"):::functionNode
+        func_prompts_build_final("build_final_prompt()"):::functionNode
+    end
+    
+    subgraph file_tracing ["deepoutputs_engine/tracing.py"]
+        class_tracing_Tracer("Tracer"):::classNode
+        func_tracing_init("__init__()"):::functionNode
+        func_tracing_log("log()"):::functionNode
+        func_tracing_format_md("_format_md()"):::functionNode
+        func_tracing_log_api_call("log_api_call()"):::functionNode
+        func_tracing_log_workflow_event("log_workflow_event()"):::functionNode
+        func_tracing_log_layer_event("log_layer_event()"):::functionNode
+        func_tracing_get_summary("get_summary()"):::functionNode
+        func_tracing_close("close()"):::functionNode
+    end
+    
+    subgraph file_deprecated ["_depricated/moa_model.py"]
+        class_deprecated_Agent("Agent [DEPRECATED]"):::classNode
+        class_deprecated_GPT4Agent("GPT4Agent [DEPRECATED]"):::classNode
+        class_deprecated_ClaudeAgent("ClaudeAgent [DEPRECATED]"):::classNode
+    end
+    
+    %% Inheritance Relationships
+    class_openrouter_OpenRouterAgent --"INHERITS"--> class_base_Agent
+    class_base_AgentGenerationError --"INHERITS"--> Exception
+    class_deprecated_GPT4Agent --"INHERITS"--> class_deprecated_Agent
+    class_deprecated_ClaudeAgent --"INHERITS"--> class_deprecated_Agent
+    
+    %% Import Dependencies
+    file_main --"IMPORTS"--> file_config
+    file_main --"IMPORTS"--> file_utils
+    file_main --"IMPORTS"--> file_mixture
+    file_main --"IMPORTS"--> file_tracing
+    file_mixture --"IMPORTS"--> file_config
+    file_mixture --"IMPORTS"--> file_openrouter
+    file_mixture --"IMPORTS"--> file_base
+    file_mixture --"IMPORTS"--> file_utils
+    file_mixture --"IMPORTS"--> file_prompts
+    file_openrouter --"IMPORTS"--> file_config
+    file_openrouter --"IMPORTS"--> file_base
+    
+    %% Function Call Relationships
+    func_main_main --"CALLS"--> func_utils_read_prompt
+    func_main_main --"CALLS"--> func_utils_sanitize_filename
+    func_main_main --"CALLS"--> class_tracing_Tracer
+    func_main_main --"CALLS"--> class_mixture_MixtureOfAgents
+    func_mixture_init --"CALLS"--> class_openrouter_OpenRouterAgent
+    func_mixture_run_workflow --"CALLS"--> func_prompts_build_layer
+    func_mixture_run_workflow --"CALLS"--> func_prompts_build_aggregation
+    func_mixture_run_workflow --"CALLS"--> func_prompts_build_synthesis
+    func_mixture_run_workflow --"CALLS"--> func_prompts_build_devils_advocate
+    func_mixture_run_workflow --"CALLS"--> func_prompts_build_final
+    func_openrouter_init --"CALLS"--> func_base_agent_init
+    func_tracing_log --"CALLS"--> func_tracing_format_md
+    func_tracing_log_api_call --"CALLS"--> func_tracing_log
+    func_tracing_log_workflow_event --"CALLS"--> func_tracing_log
+    func_tracing_log_layer_event --"CALLS"--> func_tracing_log
+    func_tracing_get_summary --"CALLS"--> func_tracing_log
+    func_tracing_close --"CALLS"--> func_tracing_get_summary
+            </pre>
+        </div>
+        <div id="sidebar">
+            <h2>Analysis & Strategy</h2>
+            <div id="analysis-report">
+                <h3>High-Impact Refactoring Targets</h3>
+                <ul>
+                    <li><strong>Critical:</strong> <code>deepoutputs_engine.utils::sanitize_filename</code> is called by the main workflow and potentially other modules. Changes will have wide impact on file naming throughout the system.</li>
+                    <li><strong>High Risk:</strong> <code>deepoutputs_engine.agents.openrouter::OpenRouterAgent</code> is instantiated multiple times in MixtureOfAgents. Any changes to its interface will affect the entire agent orchestration system.</li>
+                    <li><strong>Core Dependency:</strong> <code>deepoutputs_engine.config</code> module is imported by most other modules. Configuration changes could cascade throughout the entire system.</li>
+                    <li><strong>Workflow Critical:</strong> <code>MixtureOfAgents.run_workflow()</code> orchestrates the entire MOA process. This method has high fan-out to prompt builders and should be modified with extreme caution.</li>
+                </ul>
+
+                <h3>Potential Dead Code</h3>
+                <ul>
+                    <li><strong>Deprecated Module:</strong> <code>_depricated/moa_model.py</code> contains legacy Agent, GPT4Agent, and ClaudeAgent classes that appear to be completely replaced by the OpenRouter implementation.</li>
+                    <li><strong>Utility Functions:</strong> <code>deepoutputs_engine.utils::truncate_text</code> and <code>format_timestamp</code> have no detected incoming calls and may be unused.</li>
+                    <li><strong>Config Helper:</strong> <code>deepoutputs_engine.config::log_env_vars</code> appears to be a debug function with no detected callers.</li>
+                </ul>
+
+                <h3>Architecture Insights</h3>
+                <ul>
+                    <li><strong>Clean Separation:</strong> The agent system follows good OOP principles with a clear base class (<code>Agent</code>) and concrete implementation (<code>OpenRouterAgent</code>).</li>
+                    <li><strong>Centralized Configuration:</strong> All configuration is properly centralized in <code>config.py</code> with environment variable resolution.</li>
+                    <li><strong>Comprehensive Tracing:</strong> The <code>Tracer</code> class provides extensive logging capabilities for debugging and performance analysis.</li>
+                    <li><strong>Modular Prompts:</strong> Prompt construction is well-separated into dedicated functions for each workflow phase.</li>
+                </ul>
+
+                <h3>Dependency Analysis</h3>
+                <ul>
+                    <li><strong>No Circular Dependencies:</strong> The import structure is clean with proper hierarchical dependencies.</li>
+                    <li><strong>External Dependencies:</strong> Heavy reliance on <code>httpx</code> for async HTTP, <code>asyncio</code> for concurrency, and <code>dotenv</code> for configuration.</li>
+                    <li><strong>Legacy Isolation:</strong> Deprecated code is properly isolated in <code>_depricated/</code> directory and doesn't interfere with current architecture.</li>
+                </ul>
+
+                <h3>Performance Considerations</h3>
+                <ul>
+                    <li><strong>Async Architecture:</strong> Proper use of async/await throughout for handling concurrent API calls efficiently.</li>
+                    <li><strong>Resource Management:</strong> HTTP client sharing and semaphore-based concurrency control in MixtureOfAgents.</li>
+                    <li><strong>Comprehensive Metrics:</strong> Tracer class tracks API calls, latency, token usage, and error rates for performance monitoring.</li>
+                </ul>
+
+                <h3>Refactoring Recommendations</h3>
+                <ul>
+                    <li><strong>Remove Dead Code:</strong> Delete <code>_depricated/moa_model.py</code> and unused utility functions after confirming they're not referenced elsewhere.</li>
+                    <li><strong>Extract Constants:</strong> Move magic numbers and strings from <code>prompts.py</code> to configuration for better maintainability.</li>
+                    <li><strong>Error Handling:</strong> Consider creating more specific exception types beyond <code>AgentGenerationError</code> for better error categorization.</li>
+                    <li><strong>Testing Hooks:</strong> Add dependency injection points in <code>MixtureOfAgents</code> to facilitate unit testing with mock agents.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            mermaid: {
+              curve: 'basis'
+            },
+            htmlLabels: true
+        });
+    </script>
+</body>
+</html>
