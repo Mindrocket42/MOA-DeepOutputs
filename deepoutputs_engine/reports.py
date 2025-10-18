@@ -17,25 +17,30 @@ def generate_markdown_report(
     total_layers = len(layer_details)
     total_agents = len(moa.agents)
     models_used = [agent.model for agent in moa.agents]
-    
-    markdown_content = f"""# MoA Response Report
-Generated: {timestamp}
 
-## Configuration
-- Total Layers: {total_layers}
-- Total Agents: {total_agents}
-- Models Used: {', '.join(models_used)}
+    # Truncate original prompt
+    truncated_prompt = prompt[:100] + "..." if len(prompt) > 100 else prompt
+
+    markdown_content = f"""# Mixture of Agents (MoA) Response Report
+**Generated:** {timestamp}
+
+## System Configuration
+- **Total Layers:** {total_layers}
+- **Total Agents:** {total_agents}
+- **Models Used:** {', '.join(models_used)}
 
 ## Original Prompt
-> {prompt}
+```
+{truncated_prompt}
+```
 
-## Agent Utilization
-{chr(10).join([f"- {agent_name}: {percentage:.2f}%" for agent_name, percentage in utilization.items()])}
+## Agent Utilization Summary
+{chr(10).join([f"- **{agent_name}:** {percentage:.2f}%" for agent_name, percentage in utilization.items()])}
 
 *(Note: Utilization is a heuristic based on text similarity to the final output)*
 
 ## Final MoA Response
-**Final Response Agent:** {final_agent_name}
+**Final Response Agent:** **{final_agent_name}**
 
 {sanitize_for_markdown(final_response)}
 
@@ -64,75 +69,82 @@ def generate_detailed_markdown_report(
     devils_advocate_model = getattr(moa.devils_advocate_agent, 'model', 'unknown')
     final_agent_model = getattr(moa.final_agent, 'model', 'unknown')
 
-    markdown_content = f"""# MoA Detailed Response Report
-Generated: {timestamp}
+    # Truncate original prompt
+    truncated_prompt = prompt[:100] + "..." if len(prompt) > 100 else prompt
 
-## Configuration
-- Total Layers: {total_layers}
-- Total Agents: {total_agents}
-- Models Used: {', '.join(models_used)}
-- Synthesis Agent: {synthesis_agent_name} ({synthesis_model})
-- Devil's Advocate Agent: {devils_advocate_agent_name} ({devils_advocate_model})
-- Final Agent: {final_agent_name} ({final_agent_model})
+    markdown_content = f"""# Mixture of Agents (MoA) Detailed Response Report
+**Generated:** {timestamp}
+
+## System Configuration
+- **Total Layers:** {total_layers}
+- **Total Agents:** {total_agents}
+- **Models Used:** {', '.join(models_used)}
+- **Synthesis Agent:** **{synthesis_agent_name}** (`{synthesis_model}`)
+- **Devil's Advocate Agent:** **{devils_advocate_agent_name}** (`{devils_advocate_model}`)
+- **Final Agent:** **{final_agent_name}** (`{final_agent_model}`)
 
 ## Original Prompt
-> {prompt}
+```
+{truncated_prompt}
+```
 
-## Agent Utilization
+## Agent Utilization Summary
 {chr(10).join(
-    [f"- {agent.name}: {utilization.get(agent.name, 0.0):.2f}%" for agent in moa.agents] +
-    ([f"- Deep Research Agent: {utilization['Deep Research Agent']:.2f}%"] if 'Deep Research Agent' in utilization else []) +
-    [f"- {agent_name}: {percentage:.2f}%" for agent_name, percentage in utilization.items()
+    [f"- **{agent.name}:** {utilization.get(agent.name, 0.0):.2f}%" for agent in moa.agents] +
+    ([f"- **Deep Research Agent:** {utilization['Deep Research Agent']:.2f}%"] if 'Deep Research Agent' in utilization else []) +
+    [f"- **{agent_name}:** {percentage:.2f}%" for agent_name, percentage in utilization.items()
      if agent_name not in [agent.name for agent in moa.agents] and agent_name != "Deep Research Agent"]
 )}
 
 *(Note: Utilization is a heuristic based on text similarity to the final output.{' Deep Research Agent utilization is included if present.' if 'Deep Research Agent' in utilization else ''})*
 
-## Intermediate Outputs
+## Detailed Intermediate Outputs by Layer
 """
 
     for layer in layer_details:
         layer_num = layer["layer_number"]
         markdown_content += f"""
-### Layer {layer_num}
+## Layer {layer_num} Processing
 
-#### Layer Prompt
-> {layer["layer_prompt_details"]}
+### Layer-Specific Prompt
+```
+{layer["layer_prompt_details"]}
+```
 
-#### Step 1 - Agents Initial Responses
+### Phase 1: Initial Agent Responses
 """
         if layer.get("initial_responses") and isinstance(layer["initial_responses"], list):
             for item in layer["initial_responses"]:
                 if isinstance(item, (list, tuple)) and len(item) == 2:
                     agent_name, response = item
                     agent_model = next((agent.model for agent in moa.agents if agent.name == agent_name), "unknown")
-                    markdown_content += f"""\n##### {agent_name} - `{agent_model}`\n\n{sanitize_for_markdown(response)}\n"""
+                    markdown_content += f"""\n### **{agent_name}** (`{agent_model}`)\n\n{sanitize_for_markdown(response)}\n"""
                 else:
                     markdown_content += f"\n_Invalid format for initial response item: {item}_"
         else:
             markdown_content += "\n_No initial responses recorded or invalid format._"
 
         markdown_content += """
-#### Step 2 - Agent Aggregation of All Responses
+### Phase 2: Agent Aggregation of All Responses
 """
         if layer.get("aggregation_responses") and isinstance(layer["aggregation_responses"], list):
             for item in layer["aggregation_responses"]:
                 if isinstance(item, (list, tuple)) and len(item) == 2:
                     agent_name, response = item
                     agent_model = next((agent.model for agent in moa.agents if agent.name == agent_name), "unknown")
-                    markdown_content += f"""\n##### {agent_name} - `{agent_model}`\n\n{sanitize_for_markdown(response)}\n"""
+                    markdown_content += f"""\n### **{agent_name}** (`{agent_model}`)\n\n{sanitize_for_markdown(response)}\n"""
                 else:
                     markdown_content += f"\n_Invalid format for aggregation response item: {item}_"
         else:
             markdown_content += "\n_No aggregation responses recorded or invalid format._"
 
-        markdown_content += f"""\n#### Step 3 - Synthesized Aggregated Responses (Synthesis Agent: {synthesis_agent_name} - `{synthesis_model}`)
+        markdown_content += f"""\n### Phase 3: Synthesis and Critique
 
-##### Synthesis
+### **Synthesis Agent: {synthesis_agent_name}** (`{synthesis_model}`)
 
 {sanitize_for_markdown(layer.get("synthesis", "N/A"))}
 
-##### Devil's Advocate (Agent: {devils_advocate_agent_name} - `{devils_advocate_model}`)
+### **Devil's Advocate Agent: {devils_advocate_agent_name}** (`{devils_advocate_model}`)
 
 {sanitize_for_markdown(layer.get("devils_advocate", "N/A"))}
 
@@ -140,9 +152,9 @@ Generated: {timestamp}
 """
 
     markdown_content += f"""
-## Information Passed to Final Response Agent
+## Synthesis Summary Passed to Final Agent
 
-The following synthesized information from all layers, along with the original user prompt, was passed to the final response agent ({final_agent_name} - `{final_agent_model}`). The final agent used this information to generate the final MoA response.
+The following synthesized information from all layers, along with the original user prompt, was passed to the **Final Response Agent** (**{final_agent_name}** - `{final_agent_model}`). The final agent used this information to generate the final MoA response.
 """
     for layer in layer_details:
         layer_num = layer["layer_number"]
@@ -151,7 +163,7 @@ The following synthesized information from all layers, along with the original u
 
 {sanitize_for_markdown(layer.get("synthesis", "N/A"))}
 
-### Layer {layer_num} Devil's Advocate
+### Layer {layer_num} Devil's Advocate Critique
 
 {sanitize_for_markdown(layer.get("devils_advocate", "N/A"))}
 
@@ -160,7 +172,7 @@ The following synthesized information from all layers, along with the original u
 
     markdown_content += f"""
 ## Final MoA Response
-**Final Response Agent:** {final_agent_name} - `{final_agent_model}`
+**Final Response Agent:** **{final_agent_name}** (`{final_agent_model}`)
 
 {sanitize_for_markdown(final_response)}
 

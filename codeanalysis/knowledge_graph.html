@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Codebase Analysis Report</title>
+  <style>
+    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+    #report-container { display: flex; width: 98%; gap: 16px; margin-top: 20px; }
+    #graph-container { flex-grow: 1; border: 1px solid #ccc; padding: 10px; border-radius: 8px; }
+    #sidebar { width: 450px; flex-shrink: 0; border: 1px solid #ccc; padding: 10px; border-radius: 8px; max-height: 85vh; overflow-y: auto; }
+    h1, h2 { color: #333; }
+    #analysis-report h3 { border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 20px; color: #16a085; }
+    #analysis-report ul { list-style-type: none; padding-left: 0; }
+    #analysis-report li { background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.9em; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    #analysis-report strong { color: #c0392b; }
+    #analysis-report code { background-color: #ecf0f1; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+    /* Mermaid Node Styling */
+    .classNode { fill:#DDA0DD; stroke:#8A2BE2; stroke-width:2px; }
+    .functionNode { fill:#87CEEB; stroke:#4682B4; stroke-width:2px; }
+    .dependencyNode { fill:#90EE90; stroke:#2E8B57; stroke-width:2px; }
+    .fileNode { fill:#FFFACD; stroke:#FFD700; stroke-width:2px; }
+  </style>
+</head>
+<body>
+  <h1>Codebase Architecture & Refactoring Report</h1>
+  <div id="report-container">
+    <div id="graph-container">
+      <h2>Knowledge Graph</h2>
+      <pre class="mermaid">
+graph LR;
+subgraph file_deepoutputs_engine_main ["deepoutputs_engine/main.py"]
+func_main_main("main()"):::functionNode
+end
+subgraph file_deepoutputs_engine_agents_mixture ["deepoutputs_engine/agents/mixture.py"]
+class_agents_mixture_MixtureOfAgents("MixtureOfAgents"):::classNode
+func_agents_mixture___init__("__init__()"):::functionNode
+func_agents_mixture_close_client("close_client()"):::functionNode
+func_agents_mixture_run_workflow("run_workflow()"):::functionNode
+end
+subgraph file_deepoutputs_engine_agents_base ["deepoutputs_engine/agents/base.py"]
+class_agents_base_AgentGenerationError("AgentGenerationError"):::classNode
+class_agents_base_Agent("Agent"):::classNode
+func_agents_base_Agent___init__("__init__()"):::functionNode
+func_agents_base_Agent_generate("generate()"):::functionNode
+end
+subgraph file_deepoutputs_engine_agents_openrouter ["deepoutputs_engine/agents/openrouter.py"]
+class_agents_openrouter_OpenRouterAgent("OpenRouterAgent"):::classNode
+func_agents_openrouter_OpenRouterAgent___init__("__init__()"):::functionNode
+func_agents_openrouter_OpenRouterAgent_generate("generate()"):::functionNode
+end
+subgraph file_deepoutputs_engine_config ["deepoutputs_engine/config.py"]
+func_config_log_env_vars("log_env_vars()"):::functionNode
+func_config_resolve_model_env("resolve_model_env()"):::functionNode
+end
+subgraph file_deepoutputs_engine_utils ["deepoutputs_engine/utils.py"]
+func_utils_read_prompt_from_file("read_prompt_from_file()"):::functionNode
+func_utils_sanitize_filename("sanitize_filename()"):::functionNode
+func_utils_sanitize_for_markdown("sanitize_for_markdown()"):::functionNode
+func_utils_ensure_directory("ensure_directory()"):::functionNode
+func_utils_save_json("save_json()"):::functionNode
+func_utils_load_json("load_json()"):::functionNode
+func_utils_truncate_text("truncate_text()"):::functionNode
+func_utils_format_timestamp("format_timestamp()"):::functionNode
+end
+subgraph file_deepoutputs_engine_prompts ["deepoutputs_engine/prompts.py"]
+func_prompts_build_layer_prompt("build_layer_prompt()"):::functionNode
+func_prompts_build_aggregation_prompt("build_aggregation_prompt()"):::functionNode
+func_prompts_build_synthesis_prompt("build_synthesis_prompt()"):::functionNode
+func_prompts_build_devils_advocate_prompt("build_devils_advocate_prompt()"):::functionNode
+func_prompts_build_final_prompt("build_final_prompt()"):::functionNode
+end
+subgraph file_deepoutputs_engine_tracing ["deepoutputs_engine/tracing.py"]
+class_tracing_Tracer("Tracer"):::classNode
+func_tracing_Tracer___init__("__init__()"):::functionNode
+func_tracing_Tracer_log("log()"):::functionNode
+func_tracing_Tracer__format_md("_format_md()"):::functionNode
+func_tracing_Tracer_log_api_call("log_api_call()"):::functionNode
+func_tracing_Tracer_log_workflow_event("log_workflow_event()"):::functionNode
+func_tracing_Tracer_log_layer_event("log_layer_event()"):::functionNode
+func_tracing_Tracer_log_agent_interaction("log_agent_interaction()"):::functionNode
+func_tracing_Tracer_log_decision_point("log_decision_point()"):::functionNode
+func_tracing_Tracer_log_resource_usage("log_resource_usage()"):::functionNode
+func_tracing_Tracer_get_summary("get_summary()"):::functionNode
+func_tracing_Tracer_close("close()"):::functionNode
+end
+subgraph file__depricated_moa_model ["_depricated/moa_model.py"]
+class__depricated_moa_model_Agent("Agent"):::classNode
+class__depricated_moa_model_GPT4Agent("GPT4Agent"):::classNode
+class__depricated_moa_model_ClaudeAgent("ClaudeAgent"):::classNode
+func__depricated_moa_model_Agent___init__("__init__()"):::functionNode
+func__depricated_moa_model_Agent_generate("generate()"):::functionNode
+func__depricated_moa_model_GPT4Agent___init__("__init__()"):::functionNode
+func__depricated_moa_model_GPT4Agent_generate("generate()"):::functionNode
+func__depricated_moa_model_ClaudeAgent___init__("__init__()"):::functionNode
+func__depricated_moa_model_ClaudeAgent_generate("generate()"):::functionNode
+end
+file_deepoutputs_engine_main --"IMPORTS"--> file_deepoutputs_engine_config
+file_deepoutputs_engine_main --"IMPORTS"--> file_deepoutputs_engine_utils
+file_deepoutputs_engine_main --"IMPORTS"--> file_deepoutputs_engine_agents_mixture
+file_deepoutputs_engine_main --"IMPORTS"--> file_deepoutputs_engine_tracing
+file_deepoutputs_engine_agents_mixture --"IMPORTS"--> file_deepoutputs_engine_config
+file_deepoutputs_engine_agents_mixture --"IMPORTS"--> file_deepoutputs_engine_agents_openrouter
+file_deepoutputs_engine_agents_mixture --"IMPORTS"--> file_deepoutputs_engine_agents_base
+file_deepoutputs_engine_agents_mixture --"IMPORTS"--> file_deepoutputs_engine_utils
+file_deepoutputs_engine_agents_mixture --"IMPORTS"--> file_deepoutputs_engine_prompts
+file_deepoutputs_engine_agents_openrouter --"IMPORTS"--> file_deepoutputs_engine_config
+file_deepoutputs_engine_agents_openrouter --"IMPORTS"--> file_deepoutputs_engine_agents_base
+func_main_main --"CALLS"--> func_utils_read_prompt_from_file
+func_main_main --"CALLS"--> func_utils_sanitize_filename
+func_main_main --"CALLS"--> class_tracing_Tracer
+func_main_main --"CALLS"--> class_agents_mixture_MixtureOfAgents
+func_agents_mixture___init__ --"CALLS"--> class_agents_openrouter_OpenRouterAgent
+func_agents_mixture_run_workflow --"CALLS"--> func_prompts_build_layer_prompt
+func_agents_mixture_run_workflow --"CALLS"--> func_prompts_build_aggregation_prompt
+func_agents_mixture_run_workflow --"CALLS"--> func_prompts_build_synthesis_prompt
+func_agents_mixture_run_workflow --"CALLS"--> func_prompts_build_devils_advocate_prompt
+func_agents_mixture_run_workflow --"CALLS"--> func_prompts_build_final_prompt
+func_agents_openrouter_OpenRouterAgent___init__ --"CALLS"--> func_agents_base_Agent___init__
+func_tracing_Tracer_log --"CALLS"--> func_tracing_Tracer__format_md
+func_tracing_Tracer_log_api_call --"CALLS"--> func_tracing_Tracer_log
+func_tracing_Tracer_log_workflow_event --"CALLS"--> func_tracing_Tracer_log
+func_tracing_Tracer_log_layer_event --"CALLS"--> func_tracing_Tracer_log
+func_tracing_Tracer_log_agent_interaction --"CALLS"--> func_tracing_Tracer_log
+func_tracing_Tracer_log_decision_point --"CALLS"--> func_tracing_Tracer_log
+func_tracing_Tracer_log_resource_usage --"CALLS"--> func_tracing_Tracer_log
+func_tracing_Tracer_get_summary --"CALLS"--> func_tracing_Tracer_log
+func_tracing_Tracer_close --"CALLS"--> func_tracing_Tracer_get_summary
+class_agents_openrouter_OpenRouterAgent --"INHERITS"--> class_agents_base_Agent
+class__depricated_moa_model_GPT4Agent --"INHERITS"--> class__depricated_moa_model_Agent
+class__depricated_moa_model_ClaudeAgent --"INHERITS"--> class__depricated_moa_model_Agent
+      </pre>
+    </div>
+    <div id="sidebar">
+      <h2>Analysis & Strategy</h2>
+      <div id="analysis-report">
+        <h3>High-Impact Refactoring Targets</h3>
+        <ul>
+          <li><strong>Function 'deepoutputs_engine/tracing.py::log'</strong> is called by 6 modules. Changes will have a wide impact.</li>
+        </ul>
+        <h3>Potential Dead Code</h3>
+        <ul>
+          <li>Function 'deepoutputs_engine/agents/mixture.py::close_client' appears to be uncalled.</li>
+          <li>Function 'deepoutputs_engine/agents/base.py::Agent.generate' appears to be uncalled.</li>
+          <li>Function 'deepoutputs_engine/config.py::log_env_vars' appears to be uncalled.</li>
+          <li>Function 'deepoutputs_engine/config.py::resolve_model_env' appears to be uncalled.</li>
+          <li>Function 'deepoutputs_engine/utils.py::sanitize_for_markdown' appears to be uncalled.</li>
+          <li>And many others...</li>
+        </ul>
+        <h3>Dependency Issues</h3>
+        <ul>
+          <li>No circular dependencies detected.</li>
+        </ul>
+        <h3>Stale Files</h3>
+        <ul>
+          <li>The following files have not been updated in over 3 months and may be candidates for review or deprecation: deepoutputs_engine/main.py, deepoutputs_engine/agents/mixture.py, deepoutputs_engine/agents/base.py, deepoutputs_engine/agents/openrouter.py, deepoutputs_engine/config.py, deepoutputs_engine/utils.py</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', mermaid: { curve: 'basis' }, htmlLabels: true });
+  </script>
+</body>
+</html>
